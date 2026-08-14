@@ -83,6 +83,7 @@ export default function Navbar() {
     { name: 'Events', path: '/events' },
     { name: 'Reports', path: '/reports' },
     { name: 'Media Hub', path: '/media' },
+    { name: 'ISAME', path: '/isame' },
   ];
 
   return (
@@ -122,7 +123,7 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.path}
-                  className={`relative text-xs tracking-widest uppercase font-medium transition-all duration-300 px-3 py-2 rounded-lg hover:text-gold-light ${isActive ? 'text-gold-primary font-bold bg-gold-primary/10 border border-gold-primary/30' : 'text-silver-light/70 border border-transparent'
+                  className={`relative py-1 text-xs tracking-widest uppercase font-medium transition-all duration-300 hover:text-gold-light ${isActive ? 'text-gold-primary font-semibold' : 'text-silver-light/70'
                     }`}
                 >
                   {link.name}
@@ -179,7 +180,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="md:hidden absolute top-[100%] left-0 right-0 glass-panel-gold border-t border-white/5 p-6 animate-fade-in">
+        <div className="md:hidden absolute top-[100%] inset-x-0 min-h-[calc(100dvh-5rem)] overflow-y-auto bg-[#030714] border-t border-gold-primary/15 p-6 shadow-[0_24px_48px_rgba(0,0,0,0.6)] animate-fade-in">
           <div className="flex flex-col gap-4">
             {navLinks.map((link) => {
               const isActive = pathname === link.path;

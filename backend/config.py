@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://mdleo_db_user:mdmongo@leo.i0xnahi.mongodb.net/")
 DB_NAME = os.getenv("DB_NAME", "leomd317")
 
 # Static admin credentials (will be replaced with proper auth later)

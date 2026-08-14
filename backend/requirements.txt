@@ -1,5 +1,6 @@
 flask==3.1.1
 flask-cors==5.0.1
 pymongo==4.12.1
+certifi==2025.8.3
 python-dotenv==1.1.0
 gunicorn==23.0.0

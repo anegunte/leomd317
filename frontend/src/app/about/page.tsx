@@ -8,6 +8,17 @@ import { db } from '@/lib/db';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const PILLAR_ICONS: Record<string, any> = { Globe2, Target, Shield, Lightbulb };
 
+// These values are stored in MongoDB. Keep the Tailwind class names literal in
+// source so Tailwind generates the gradient utilities at build time.
+const PILLAR_COLOR_CLASSES: Record<string, string> = {
+  'from-gold-primary to-gold-hover': 'from-gold-primary to-gold-hover',
+  'from-silver-primary to-white': 'from-silver-primary to-white',
+  'from-gold-light to-gold-primary': 'from-gold-light to-gold-primary',
+  'from-silver-light to-silver-dark': 'from-silver-light to-silver-dark',
+};
+
+const DEFAULT_PILLAR_COLOR = 'from-gold-primary to-gold-hover';
+
 export default function About() {
   const [aboutContent, setAboutContent] = useState<any>(null);
   const [pillars, setPillars] = useState<any[]>([]);
@@ -37,7 +48,7 @@ export default function About() {
     title: p.title,
     description: p.description,
     icon: PILLAR_ICONS[p.icon] || Globe2,
-    color: p.color || 'from-gold-primary to-gold-hover',
+    colorClass: PILLAR_COLOR_CLASSES[p.color] || DEFAULT_PILLAR_COLOR,
   }));
 
   return (
@@ -145,7 +156,7 @@ export default function About() {
                 className="glass-panel rounded-2xl p-8 border border-white/5 hover:border-gold-primary/20 transition-all group flex flex-col justify-between"
               >
                 <div>
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${pillar.color} flex items-center justify-center text-bg-deep-space font-bold mb-6`}>
+                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${pillar.colorClass} flex items-center justify-center text-bg-deep-space font-bold mb-6`}>
                     <Icon size={20} />
                   </div>
                   <h3 className="text-lg font-serif font-bold text-white mb-3 group-hover:text-gold-light transition-colors">

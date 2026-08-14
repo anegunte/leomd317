@@ -15,6 +15,7 @@ from routes.site_settings import site_settings_bp
 from routes.about import about_bp
 from routes.cabinet import cabinet_bp
 from routes.lion_cabinet import lion_cabinet_bp
+from routes.isame import isame_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(districts_bp, url_prefix="/api/districts")
@@ -26,6 +27,7 @@ app.register_blueprint(site_settings_bp, url_prefix="/api/site-settings")
 app.register_blueprint(about_bp, url_prefix="/api/about")
 app.register_blueprint(cabinet_bp, url_prefix="/api/cabinet")
 app.register_blueprint(lion_cabinet_bp, url_prefix="/api/lion-cabinet")
+app.register_blueprint(isame_bp, url_prefix="/api/isame")
 
 
 @app.route("/api/health", methods=["GET"])

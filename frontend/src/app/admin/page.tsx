@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/db';
 import { ServiceProject, ClubData, DistrictData, MediaItem, LeoEvent, LeoProfile } from '@/lib/mockData';
+import { DEFAULT_ISAME_SETTINGS, IsameSettings } from '@/lib/isame';
 import {
   Users,
   FolderHeart,
@@ -19,14 +20,15 @@ import {
   Image,
   Database,
   CalendarCheck,
-  Edit3
+  Edit3,
+  Globe2
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'stats' | 'directory' | 'projects' | 'media' | 'events' | 'site' | 'cabinet' | 'lion'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'directory' | 'projects' | 'media' | 'events' | 'site' | 'cabinet' | 'lion' | 'isame'>('stats');
 
   // Database datasets state
   const [projects, setProjects] = useState<ServiceProject[]>([]);
@@ -39,6 +41,14 @@ export default function AdminDashboard() {
   const [siteSettings, setSiteSettings] = useState<any>({});
   const [counters, setCounters] = useState<any[]>([]);
   const [tickerItems, setTickerItems] = useState<any[]>([]);
+  const [isameSettings, setIsameSettings] = useState<IsameSettings>(DEFAULT_ISAME_SETTINGS);
+
+  // The same form is used for a new record and for an existing record.
+  const [editingProject, setEditingProject] = useState<ServiceProject | null>(null);
+  const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
+  const [editingEvent, setEditingEvent] = useState<LeoEvent | null>(null);
+  const [editingCabinet, setEditingCabinet] = useState<LeoProfile | null>(null);
+  const [editingLion, setEditingLion] = useState<LeoProfile | null>(null);
 
   // Event form
   const [evtTitle, setEvtTitle] = useState('');
@@ -80,6 +90,7 @@ export default function AdminDashboard() {
   const [projClub, setProjClub] = useState('');
   const [projDistrict, setProjDistrict] = useState('317A');
   const [projPhoto, setProjPhoto] = useState('');
+  const [projDate, setProjDate] = useState('');
 
   // Form variables: Media
   const [mediaTitle, setMediaTitle] = useState('');
@@ -102,7 +113,7 @@ export default function AdminDashboard() {
   const [newClubMembers, setNewClubMembers] = useState(25);
 
   const loadData = async () => {
-    const [p, c, d, e, m, lc, mi, s, cnt, tk] = await Promise.all([
+    const [p, c, d, e, m, lc, mi, s, cnt, tk, isame] = await Promise.all([
       db.getProjects(),
       db.getClubs(),
       db.getDistricts(),
@@ -113,6 +124,7 @@ export default function AdminDashboard() {
       db.getSiteSettings(),
       db.getCounters(),
       db.getTicker(),
+      db.getIsameSettings(),
     ]);
     setProjects(p);
     setClubs(c);
@@ -124,6 +136,7 @@ export default function AdminDashboard() {
     setSiteSettings(s);
     setCounters(cnt);
     setTickerItems(tk);
+    setIsameSettings({ ...DEFAULT_ISAME_SETTINGS, ...isame });
   };
 
   useEffect(() => {
@@ -158,8 +171,21 @@ export default function AdminDashboard() {
     window.dispatchEvent(new Event('leo-auth-change'));
   };
 
-  // Project addition logic
-  const handleAddProject = async (e: React.FormEvent) => {
+  const resetProjectForm = () => {
+    setEditingProject(null); setProjTitle(''); setProjDesc(''); setProjCat('Education');
+    setProjBenef(100); setProjHours(40); setProjTrees(0); setProjBlood(0); setProjClub('');
+    setProjDistrict('317A'); setProjPhoto(''); setProjDate('');
+  };
+
+  const startEditProject = (project: ServiceProject) => {
+    setEditingProject(project); setProjTitle(project.title); setProjDesc(project.description);
+    setProjCat(project.category); setProjBenef(project.impactMetrics.beneficiaries || 0);
+    setProjHours(project.impactMetrics.volunteerHours || 0); setProjTrees(project.impactMetrics.treesPlanted || 0);
+    setProjBlood(project.impactMetrics.bloodUnits || 0); setProjClub(project.club); setProjDistrict(project.district);
+    setProjPhoto(project.photos?.[0] || ''); setProjDate(project.date || '');
+  };
+
+  const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projTitle || !projDesc || !projClub) {
       alert('Please fill out all required fields');
@@ -172,22 +198,22 @@ export default function AdminDashboard() {
       impactMetrics: {
         beneficiaries: projBenef,
         volunteerHours: projHours,
-        ...(projTrees > 0 ? { treesPlanted: projTrees } : {}),
-        ...(projBlood > 0 ? { bloodUnits: projBlood } : {})
+        ...(editingProject?.impactMetrics || {}),
+        treesPlanted: projTrees,
+        bloodUnits: projBlood,
       },
       photos: projPhoto ? [projPhoto] : ["https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600"],
       district: projDistrict,
       club: projClub,
-      date: new Date().toISOString().split('T')[0]
+      date: projDate || new Date().toISOString().split('T')[0]
     };
 
-    await db.addProject(params);
-    setProjTitle('');
-    setProjDesc('');
-    setProjClub('');
-    setProjPhoto('');
+    if (editingProject) await db.updateProject({ ...editingProject, ...params });
+    else await db.addProject(params);
+    const wasEditing = Boolean(editingProject);
+    resetProjectForm();
     loadData();
-    alert('Service project successfully registered and aggregated!');
+    alert(wasEditing ? 'Service project updated successfully!' : 'Service project successfully registered and aggregated!');
   };
 
   const handleDeleteProject = async (id: string) => {
@@ -197,23 +223,85 @@ export default function AdminDashboard() {
     }
   };
 
-  // Media addition logic
-  const handleAddMedia = async (e: React.FormEvent) => {
+  const resetMediaForm = () => {
+    setEditingMedia(null); setMediaTitle('');
+    setMediaUrl('https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=600');
+    setMediaCat('Service Projects'); setMediaDistrict('317A');
+  };
+
+  const startEditMedia = (item: MediaItem) => {
+    setEditingMedia(item); setMediaTitle(item.title); setMediaUrl(item.url || item.thumbnail);
+    setMediaCat(item.category); setMediaDistrict(item.district);
+  };
+
+  const handleSaveMedia = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mediaTitle || !mediaUrl) return;
 
-    await db.addMedia({
+    const item = {
       title: mediaTitle,
       url: mediaUrl,
       thumbnail: mediaUrl,
-      type: 'photo',
+      type: editingMedia?.type || 'photo',
       category: mediaCat,
       district: mediaDistrict
-    });
+    };
 
-    setMediaTitle('');
+    if (editingMedia) await db.updateMedia({ ...editingMedia, ...item });
+    else await db.addMedia(item);
+    const wasEditing = Boolean(editingMedia);
+    resetMediaForm();
     loadData();
-    alert('Media item uploaded successfully to the Hub!');
+    alert(wasEditing ? 'Media item updated successfully!' : 'Media item uploaded successfully to the Hub!');
+  };
+
+  const resetEventForm = () => {
+    setEditingEvent(null); setEvtTitle(''); setEvtDesc(''); setEvtDate(''); setEvtLocation('');
+    setEvtDistrict('317A'); setEvtStatus('upcoming'); setEvtPoster(''); setEvtClub(''); setEvtRegLink('');
+  };
+
+  const startEditEvent = (event: LeoEvent) => {
+    setEditingEvent(event); setEvtTitle(event.title); setEvtDesc(event.description || '');
+    setEvtDate(event.date ? event.date.slice(0, 16) : ''); setEvtLocation(event.location);
+    setEvtDistrict(event.district); setEvtStatus(event.status); setEvtPoster(event.poster || '');
+    setEvtClub(event.organizingTeam || ''); setEvtRegLink(event.registrationLink || '');
+  };
+
+  const handleSaveEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!evtTitle || !evtDate || !evtLocation) { alert('Fill all required fields'); return; }
+    const event = { title: evtTitle, description: evtDesc, date: evtDate, location: evtLocation, district: evtDistrict, status: evtStatus, poster: evtPoster, registrationLink: evtRegLink, organizingTeam: evtClub };
+    if (editingEvent) await db.updateEvent({ ...editingEvent, ...event });
+    else await db.addEvent(event);
+    const wasEditing = Boolean(editingEvent);
+    resetEventForm(); loadData();
+    alert(wasEditing ? 'Event updated successfully!' : 'Event created successfully!');
+  };
+
+  const resetCabinetForm = () => {
+    setEditingCabinet(null); setCabName(''); setCabRole(''); setCabDistrict('317A'); setCabClub(''); setCabEmail(''); setCabPhone(''); setCabPhoto('');
+  };
+  const startEditCabinet = (member: LeoProfile) => {
+    setEditingCabinet(member); setCabName(member.name); setCabRole(member.role); setCabDistrict(member.district); setCabClub(member.club || ''); setCabEmail(member.email || ''); setCabPhone(member.phone || ''); setCabPhoto(member.photo || '');
+  };
+  const handleSaveCabinet = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!cabName || !cabRole) { alert('Name and role are required'); return; }
+    const member = { name: cabName, role: cabRole, district: cabDistrict, club: cabClub, email: cabEmail, phone: cabPhone, photo: cabPhoto };
+    if (editingCabinet) await db.updateCabinetMember({ ...editingCabinet, ...member }); else await db.addCabinetMember(member);
+    const wasEditing = Boolean(editingCabinet); resetCabinetForm(); loadData(); alert(wasEditing ? 'Cabinet member updated!' : 'Cabinet member added!');
+  };
+
+  const resetLionForm = () => {
+    setEditingLion(null); setLionName(''); setLionRole(''); setLionDistrict('317'); setLionClub(''); setLionEmail(''); setLionPhone(''); setLionPhoto('');
+  };
+  const startEditLion = (member: LeoProfile) => {
+    setEditingLion(member); setLionName(member.name); setLionRole(member.role); setLionDistrict(member.district); setLionClub(member.club || ''); setLionEmail(member.email || ''); setLionPhone(member.phone || ''); setLionPhoto(member.photo || '');
+  };
+  const handleSaveLion = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!lionName || !lionRole) { alert('Name and role are required'); return; }
+    const member = { name: lionName, role: lionRole, district: lionDistrict, club: lionClub, email: lionEmail, phone: lionPhone, photo: lionPhoto };
+    if (editingLion) await db.updateLionCabinetMember({ ...editingLion, ...member }); else await db.addLionCabinetMember(member);
+    const wasEditing = Boolean(editingLion); resetLionForm(); loadData(); alert(wasEditing ? 'Lion Cabinet member updated!' : 'Lion Cabinet member added!');
   };
 
   // Club update logic
@@ -338,6 +426,15 @@ export default function AdminDashboard() {
           >
             <Users size={14} />
             Lion Cabinet
+          </button>
+
+          <button
+            onClick={() => setActiveTab('isame')}
+            className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl transition-all ${activeTab === 'isame' ? 'bg-gold-primary/10 border-l-2 border-gold-primary text-gold-light font-bold' : 'hover:bg-white/5 text-silver-primary hover:text-white'
+              }`}
+          >
+            <Globe2 size={14} />
+            ISAME Forum
           </button>
 
           <button
@@ -616,22 +713,19 @@ export default function AdminDashboard() {
                       <h5 className="text-xs font-bold text-white">{proj.title}</h5>
                       <span className="text-[9px] text-silver-dark">{proj.club} &bull; Beneficiaries: {proj.impactMetrics.beneficiaries}</span>
                     </div>
-                    <button
-                      onClick={() => handleDeleteProject(proj.id)}
-                      className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"
-                      title="Delete Record"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => startEditProject(proj)} className="p-1.5 rounded-full border border-white/10 hover:border-gold-primary text-gold-light" title="Edit record"><Edit3 size={13} /></button>
+                      <button onClick={() => handleDeleteProject(proj.id)} className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400" title="Delete Record"><Trash2 size={13} /></button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Form: Add New Project */}
-            <form onSubmit={handleAddProject} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
+            <form onSubmit={handleSaveProject} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
               <h4 className="font-bold text-gold-light uppercase tracking-wider text-[9px] pb-2 border-b border-white/5 flex items-center gap-1.5">
-                <Plus size={12} /> Register On-Ground Service Campaign
+                {editingProject ? <Edit3 size={12} /> : <Plus size={12} />} {editingProject ? 'Update Service Campaign' : 'Register On-Ground Service Campaign'}
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -667,6 +761,11 @@ export default function AdminDashboard() {
                   value={projDesc} onChange={e => setProjDesc(e.target.value)} rows={3} required placeholder="Detail the local action, partners, and implementation strategy..."
                   className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg focus:outline-none focus:border-gold-primary text-xs"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Campaign Date</label>
+                <input type="date" value={projDate} onChange={e => setProjDate(e.target.value)} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" />
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -733,12 +832,12 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px] hover:shadow-[0_0_15px_rgba(212,175,55,0.35)] transition-all"
-              >
-                Register & Synchronize Project
-              </button>
+              <div className="flex gap-3">
+                {editingProject && <button type="button" onClick={resetProjectForm} className="rounded-full border border-white/15 px-5 py-2.5 text-[9px] font-bold uppercase tracking-widest text-silver-primary">Cancel</button>}
+                <button type="submit" className="flex-1 py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px] hover:shadow-[0_0_15px_rgba(212,175,55,0.35)] transition-all">
+                  {editingProject ? 'Save Project Changes' : 'Register & Synchronize Project'}
+                </button>
+              </div>
             </form>
           </div>
         )}
@@ -768,20 +867,18 @@ export default function AdminDashboard() {
                         <span className="text-[9px] text-silver-dark">{item.category} &bull; District {item.district}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={async () => { if (confirm(`Delete "${item.title}"?`)) { await db.deleteMedia(item.id); loadData(); } }}
-                      className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => startEditMedia(item)} className="p-1.5 rounded-full border border-white/10 hover:border-gold-primary text-gold-light" title="Edit media"><Edit3 size={13} /></button>
+                      <button onClick={async () => { if (confirm(`Delete "${item.title}"?`)) { await db.deleteMedia(item.id); loadData(); } }} className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"><Trash2 size={13} /></button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <form onSubmit={handleAddMedia} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
+            <form onSubmit={handleSaveMedia} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
               <h4 className="font-bold text-gold-light uppercase tracking-wider text-[9px] pb-2 border-b border-white/5 flex items-center gap-1.5">
-                <Plus size={12} /> Add Photo to Media Hub
+                {editingMedia ? <Edit3 size={12} /> : <Plus size={12} />} {editingMedia ? 'Update Media Item' : 'Add Photo to Media Hub'}
               </h4>
 
               <div>
@@ -830,12 +927,10 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]"
-              >
-                Upload Photo to Hub
-              </button>
+              <div className="flex gap-3">
+                {editingMedia && <button type="button" onClick={resetMediaForm} className="rounded-full border border-white/15 px-5 py-2.5 text-[9px] font-bold uppercase tracking-widest text-silver-primary">Cancel</button>}
+                <button type="submit" className="flex-1 py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]">{editingMedia ? 'Save Media Changes' : 'Upload Photo to Hub'}</button>
+              </div>
             </form>
           </div>
         )}
@@ -857,27 +952,18 @@ export default function AdminDashboard() {
                       <h5 className="text-xs font-bold text-white">{evt.title}</h5>
                       <span className="text-[9px] text-silver-dark">{evt.location} &bull; {new Date(evt.date).toLocaleDateString()} &bull; <span className={evt.status === 'upcoming' ? 'text-green-400' : 'text-silver-dark'}>{evt.status}</span></span>
                     </div>
-                    <button
-                      onClick={async () => { if (confirm('Delete this event?')) { await db.deleteEvent(evt.id); loadData(); } }}
-                      className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => startEditEvent(evt)} className="p-1.5 rounded-full border border-white/10 hover:border-gold-primary text-gold-light" title="Edit event"><Edit3 size={13} /></button>
+                      <button onClick={async () => { if (confirm('Delete this event?')) { await db.deleteEvent(evt.id); loadData(); } }} className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"><Trash2 size={13} /></button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (!evtTitle || !evtDate || !evtLocation) { alert('Fill all required fields'); return; }
-              await db.addEvent({ title: evtTitle, description: evtDesc, date: evtDate, location: evtLocation, district: evtDistrict, status: evtStatus, poster: evtPoster, registrationLink: evtRegLink, organizingTeam: evtClub });
-              setEvtTitle(''); setEvtDesc(''); setEvtDate(''); setEvtLocation(''); setEvtPoster(''); setEvtClub(''); setEvtRegLink('');
-              loadData();
-              alert('Event created successfully!');
-            }} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
+            <form onSubmit={handleSaveEvent} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
               <h4 className="font-bold text-gold-light uppercase tracking-wider text-[9px] pb-2 border-b border-white/5 flex items-center gap-1.5">
-                <Plus size={12} /> Add New Event
+                {editingEvent ? <Edit3 size={12} /> : <Plus size={12} />} {editingEvent ? 'Update Event' : 'Add New Event'}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -924,7 +1010,10 @@ export default function AdminDashboard() {
                 <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Poster Image URL (Google Drive link or direct URL)</label>
                 <input type="text" value={evtPoster} onChange={e => setEvtPoster(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg focus:outline-none focus:border-gold-primary text-xs" />
               </div>
-              <button type="submit" className="w-full py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]">Create Event</button>
+              <div className="flex gap-3">
+                {editingEvent && <button type="button" onClick={resetEventForm} className="rounded-full border border-white/15 px-5 py-2.5 text-[9px] font-bold uppercase tracking-widest text-silver-primary">Cancel</button>}
+                <button type="submit" className="flex-1 py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]">{editingEvent ? 'Save Event Changes' : 'Create Event'}</button>
+              </div>
             </form>
           </div>
         )}
@@ -946,27 +1035,18 @@ export default function AdminDashboard() {
                       <h5 className="text-xs font-bold text-white">{m.name}</h5>
                       <span className="text-[9px] text-silver-dark">{m.role} &bull; {m.district} &bull; {m.club}</span>
                     </div>
-                    <button
-                      onClick={async () => { if (confirm(`Remove ${m.name}?`)) { await db.deleteCabinetMember(m.id); loadData(); } }}
-                      className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => startEditCabinet(m)} className="p-1.5 rounded-full border border-white/10 hover:border-gold-primary text-gold-light" title="Edit member"><Edit3 size={13} /></button>
+                      <button onClick={async () => { if (confirm(`Remove ${m.name}?`)) { await db.deleteCabinetMember(m.id); loadData(); } }} className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"><Trash2 size={13} /></button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (!cabName || !cabRole) { alert('Name and role are required'); return; }
-              await db.addCabinetMember({ name: cabName, role: cabRole, district: cabDistrict, club: cabClub, email: cabEmail, phone: cabPhone, photo: cabPhoto });
-              setCabName(''); setCabRole(''); setCabClub(''); setCabEmail(''); setCabPhone(''); setCabPhoto('');
-              loadData();
-              alert('Cabinet member added!');
-            }} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
+            <form onSubmit={handleSaveCabinet} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
               <h4 className="font-bold text-gold-light uppercase tracking-wider text-[9px] pb-2 border-b border-white/5 flex items-center gap-1.5">
-                <Plus size={12} /> Add Cabinet Member
+                {editingCabinet ? <Edit3 size={12} /> : <Plus size={12} />} {editingCabinet ? 'Update Cabinet Member' : 'Add Cabinet Member'}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -976,6 +1056,18 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Role / Designation</label>
                   <input type="text" value={cabRole} onChange={e => setCabRole(e.target.value)} required placeholder="e.g. Multiple District Leo President" className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg focus:outline-none focus:border-gold-primary text-xs" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">District</label>
+                  <select value={cabDistrict} onChange={e => setCabDistrict(e.target.value)} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs cursor-pointer">
+                    {['317','317A','317B','317C','317D','317E','317F','317G'].map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Leo Club Name</label>
+                  <input type="text" value={cabClub} onChange={e => setCabClub(e.target.value)} placeholder="e.g. Leo Club of RVCE" className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg focus:outline-none focus:border-gold-primary text-xs" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -992,7 +1084,10 @@ export default function AdminDashboard() {
                 <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Photo URL (Google Drive link or direct URL)</label>
                 <input type="text" value={cabPhoto} onChange={e => setCabPhoto(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg focus:outline-none focus:border-gold-primary text-xs" />
               </div>
-              <button type="submit" className="w-full py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]">Add Member</button>
+              <div className="flex gap-3">
+                {editingCabinet && <button type="button" onClick={resetCabinetForm} className="rounded-full border border-white/15 px-5 py-2.5 text-[9px] font-bold uppercase tracking-widest text-silver-primary">Cancel</button>}
+                <button type="submit" className="flex-1 py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]">{editingCabinet ? 'Save Member Changes' : 'Add Member'}</button>
+              </div>
             </form>
           </div>
         )}
@@ -1014,27 +1109,18 @@ export default function AdminDashboard() {
                       <h5 className="text-xs font-bold text-white">{m.name}</h5>
                       <span className="text-[9px] text-silver-dark">{m.role} &bull; {m.district} &bull; {m.club}</span>
                     </div>
-                    <button
-                      onClick={async () => { if (confirm(`Remove ${m.name}?`)) { await db.deleteLionCabinetMember(m.id); loadData(); } }}
-                      className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => startEditLion(m)} className="p-1.5 rounded-full border border-white/10 hover:border-gold-primary text-gold-light" title="Edit member"><Edit3 size={13} /></button>
+                      <button onClick={async () => { if (confirm(`Remove ${m.name}?`)) { await db.deleteLionCabinetMember(m.id); loadData(); } }} className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"><Trash2 size={13} /></button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (!lionName || !lionRole) { alert('Name and role are required'); return; }
-              await db.addLionCabinetMember({ name: lionName, role: lionRole, district: lionDistrict, club: lionClub, email: lionEmail, phone: lionPhone, photo: lionPhoto });
-              setLionName(''); setLionRole(''); setLionClub(''); setLionEmail(''); setLionPhone(''); setLionPhoto('');
-              loadData();
-              alert('Lion Cabinet member added!');
-            }} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
+            <form onSubmit={handleSaveLion} className="border border-white/10 p-5 rounded-2xl space-y-4 text-xs">
               <h4 className="font-bold text-gold-light uppercase tracking-wider text-[9px] pb-2 border-b border-white/5 flex items-center gap-1.5">
-                <Plus size={12} /> Add Lion Cabinet Member
+                {editingLion ? <Edit3 size={12} /> : <Plus size={12} />} {editingLion ? 'Update Lion Cabinet Member' : 'Add Lion Cabinet Member'}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -1072,12 +1158,66 @@ export default function AdminDashboard() {
                 <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Photo URL (Google Drive link or direct URL)</label>
                 <input type="text" value={lionPhoto} onChange={e => setLionPhoto(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg focus:outline-none focus:border-gold-primary text-xs" />
               </div>
-              <button type="submit" className="w-full py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]">Add Lion Member</button>
+              <div className="flex gap-3">
+                {editingLion && <button type="button" onClick={resetLionForm} className="rounded-full border border-white/15 px-5 py-2.5 text-[9px] font-bold uppercase tracking-widest text-silver-primary">Cancel</button>}
+                <button type="submit" className="flex-1 py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]">{editingLion ? 'Save Member Changes' : 'Add Lion Member'}</button>
+              </div>
             </form>
           </div>
         )}
 
-        {/* TAB 8: SITE SETTINGS */}
+        {/* TAB 8: ISAME FORUM */}
+        {activeTab === 'isame' && (
+          <div className="space-y-8">
+            <div className="flex flex-wrap justify-between gap-3 border-b border-white/5 pb-4">
+              <div>
+                <h2 className="text-lg font-serif font-bold text-white uppercase tracking-wider">ISAME Forum 2027</h2>
+                <p className="mt-1 text-[9px] uppercase tracking-wider text-silver-dark">Public page content and registration details</p>
+              </div>
+              <Link href="/isame" target="_blank" className="rounded-full border border-gold-primary/35 px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-gold-light hover:bg-gold-primary/10">Preview page</Link>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              await db.updateIsameSettings(isameSettings);
+              await loadData();
+              alert('ISAME Forum page updated successfully!');
+            }} className="border border-gold-primary/20 bg-gold-primary/[0.025] p-5 rounded-2xl space-y-5 text-xs">
+              <p className="rounded-lg border border-gold-primary/15 bg-bg-deep-space/60 p-3 text-[10px] leading-relaxed text-silver-primary">Only publish dates, venue and programme details after they have been confirmed by the organisers. The official forum listing link remains available on the public page.</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Eyebrow</label><input value={isameSettings.eyebrow} onChange={e => setIsameSettings({ ...isameSettings, eyebrow: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Location</label><input value={isameSettings.location} onChange={e => setIsameSettings({ ...isameSettings, location: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Title Line One</label><input value={isameSettings.titlePrefix} onChange={e => setIsameSettings({ ...isameSettings, titlePrefix: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Title Line Two</label><input value={isameSettings.titleHighlight} onChange={e => setIsameSettings({ ...isameSettings, titleHighlight: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Confirmed Dates</label><input value={isameSettings.dates} onChange={e => setIsameSettings({ ...isameSettings, dates: e.target.value })} placeholder="e.g. 10–12 January 2027" className="w-full px-2.5 py-2 bg-bg-deep-space border border-gold-primary/30 rounded-lg text-xs" /></div>
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Exact Venue</label><input value={isameSettings.venue} onChange={e => setIsameSettings({ ...isameSettings, venue: e.target.value })} placeholder="e.g. Venue name, Goa" className="w-full px-2.5 py-2 bg-bg-deep-space border border-gold-primary/30 rounded-lg text-xs" /></div>
+              </div>
+
+              <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Hero Introduction</label><textarea rows={3} value={isameSettings.heroSubtitle} onChange={e => setIsameSettings({ ...isameSettings, heroSubtitle: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+              <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">ISAME Region Content</label><textarea rows={4} value={isameSettings.regionIntro} onChange={e => setIsameSettings({ ...isameSettings, regionIntro: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+              <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Forum Content</label><textarea rows={4} value={isameSettings.forumExperience} onChange={e => setIsameSettings({ ...isameSettings, forumExperience: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+              <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Destination Content</label><textarea rows={3} value={isameSettings.destinationIntro} onChange={e => setIsameSettings({ ...isameSettings, destinationIntro: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+              <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Registration / Status Note</label><textarea rows={2} value={isameSettings.statusNote} onChange={e => setIsameSettings({ ...isameSettings, statusNote: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Google Form Registration URL</label><input type="url" value={isameSettings.registrationUrl} onChange={e => setIsameSettings({ ...isameSettings, registrationUrl: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Official Forum Listing URL</label><input type="url" value={isameSettings.officialForumUrl} onChange={e => setIsameSettings({ ...isameSettings, officialForumUrl: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Hero Image URL</label><input value={isameSettings.heroImage} onChange={e => setIsameSettings({ ...isameSettings, heroImage: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Forum Image URL</label><input value={isameSettings.forumImage} onChange={e => setIsameSettings({ ...isameSettings, forumImage: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+                <div><label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Leadership Image URL</label><input value={isameSettings.leadershipImage} onChange={e => setIsameSettings({ ...isameSettings, leadershipImage: e.target.value })} className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs" /></div>
+              </div>
+              <button type="submit" className="w-full py-2.5 rounded-full bg-gold-primary text-bg-deep-space font-bold uppercase tracking-widest text-[9px]">Save ISAME Forum Details</button>
+            </form>
+          </div>
+        )}
+
+        {/* TAB 9: SITE SETTINGS */}
         {activeTab === 'site' && (
           <div className="space-y-8">
             <div className="flex justify-between items-center border-b border-white/5 pb-4">

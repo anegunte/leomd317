@@ -25,6 +25,29 @@
   --foreground: var(--text-primary);
 }
 
+/* Shared design tokens: keep the luxury gold theme and typography consistent
+   across every page that uses Tailwind's semantic utility classes. */
+@theme {
+  --color-bg-midnight: var(--bg-midnight);
+  --color-bg-deep-space: var(--bg-deep-space);
+  --color-bg-panel: var(--bg-panel);
+  --color-gold-primary: var(--gold-primary);
+  --color-gold-light: var(--gold-light);
+  --color-gold-dark: var(--gold-dark);
+  --color-gold-hover: var(--gold-hover);
+  --color-silver-primary: var(--silver-primary);
+  --color-silver-light: var(--silver-light);
+  --color-silver-dark: var(--silver-dark);
+
+  --font-sans: 'Outfit', 'Inter', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+
+  --animate-pulse-slow: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-glow-pulse: glow-pulse 3s ease-in-out infinite;
+  --animate-orbit: rotate 20s linear infinite;
+}
+
 
 @keyframes pulse-slow {
   0%, 100% { opacity: 0.3; transform: scale(0.98); }

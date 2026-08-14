@@ -408,13 +408,26 @@ export default function Events() {
                   <div key={event.id} className="glass-panel rounded-3xl overflow-hidden border border-white/5 hover:border-gold-primary/20 transition-all flex flex-col md:flex-row min-h-[220px]">
 
                     {/* Poster */}
-                    <div className="relative w-full md:w-52 aspect-[16/10] md:aspect-square bg-bg-deep-space shrink-0 border-r border-white/5">
+                    <div className="relative isolate w-full md:w-56 aspect-[16/10] md:aspect-auto md:self-stretch overflow-hidden bg-bg-deep-space shrink-0 border-r border-white/5">
                       {event.poster ? (
-                        <img src={toDirectImageUrl(event.poster)} alt={event.title} className="w-full h-full object-contain" />
+                        <>
+                          {/* Fill the frame without sacrificing any of the poster itself. */}
+                          <img
+                            src={toDirectImageUrl(event.poster)}
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-xl"
+                          />
+                          <img
+                            src={toDirectImageUrl(event.poster)}
+                            alt={event.title}
+                            className="relative z-10 block h-full w-full object-contain"
+                          />
+                        </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xs text-silver-dark uppercase tracking-widest">No Poster</div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-bg-deep-space via-transparent to-transparent opacity-60" />
+                      <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t md:bg-gradient-to-r from-bg-deep-space/20 via-transparent to-transparent" />
                     </div>
 
                     {/* Content Details */}
@@ -495,13 +508,26 @@ export default function Events() {
                   <div key={event.id} className="glass-panel rounded-3xl overflow-hidden border border-white/5 hover:border-silver-primary/20 transition-all flex flex-col md:flex-row min-h-[200px]">
 
                     {/* Poster */}
-                    <div className="relative w-full md:w-44 aspect-[16/10] md:aspect-square bg-bg-deep-space shrink-0 border-r border-white/5">
+                    <div className="relative isolate w-full md:w-56 aspect-[16/10] md:aspect-auto md:self-stretch overflow-hidden bg-bg-deep-space shrink-0 border-r border-white/5">
                       {event.poster ? (
-                        <img src={toDirectImageUrl(event.poster)} alt={event.title} className="w-full h-full object-contain filter saturate-50" />
+                        <>
+                          {/* Keep the full photo visible; its blurred copy fills any spare space. */}
+                          <img
+                            src={toDirectImageUrl(event.poster)}
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-xl saturate-50"
+                          />
+                          <img
+                            src={toDirectImageUrl(event.poster)}
+                            alt={event.title}
+                            className="relative z-10 block h-full w-full object-contain saturate-50"
+                          />
+                        </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xs text-silver-dark uppercase tracking-widest">No Poster</div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-bg-deep-space via-transparent to-transparent opacity-65" />
+                      <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t md:bg-gradient-to-r from-bg-deep-space/25 via-transparent to-transparent" />
                     </div>
 
                     {/* Content details */}
