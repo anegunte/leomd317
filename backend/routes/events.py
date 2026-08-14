@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from database import db
+from routes.live import publish_live_event
 
 events_bp = Blueprint("events", __name__)
 collection = db["events"]
@@ -35,6 +36,7 @@ def create_event():
     data.setdefault("id", f"evt-{int(time.time() * 1000)}")
     collection.insert_one(data)
     data.pop("_id", None)
+    publish_live_event("events-updated")
     return jsonify(data), 201
 
 
@@ -46,6 +48,7 @@ def update_event(event_id):
     if result.matched_count == 0:
         return jsonify({"error": "Event not found"}), 404
     updated = collection.find_one({"id": event_id}, {"_id": 0})
+    publish_live_event("events-updated")
     return jsonify(updated)
 
 
@@ -54,4 +57,5 @@ def delete_event(event_id):
     result = collection.delete_one({"id": event_id})
     if result.deleted_count == 0:
         return jsonify({"error": "Event not found"}), 404
+    publish_live_event("events-updated")
     return jsonify({"message": "Event deleted"})

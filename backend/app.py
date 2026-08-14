@@ -16,6 +16,8 @@ from routes.about import about_bp
 from routes.cabinet import cabinet_bp
 from routes.lion_cabinet import lion_cabinet_bp
 from routes.isame import isame_bp
+from routes.celebration import celebration_bp
+from routes.live import live_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(districts_bp, url_prefix="/api/districts")
@@ -28,6 +30,8 @@ app.register_blueprint(about_bp, url_prefix="/api/about")
 app.register_blueprint(cabinet_bp, url_prefix="/api/cabinet")
 app.register_blueprint(lion_cabinet_bp, url_prefix="/api/lion-cabinet")
 app.register_blueprint(isame_bp, url_prefix="/api/isame")
+app.register_blueprint(celebration_bp, url_prefix="/api/celebration")
+app.register_blueprint(live_bp, url_prefix="/api/live")
 
 
 @app.route("/api/health", methods=["GET"])

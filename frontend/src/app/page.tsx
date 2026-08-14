@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import HighImpactEventRibbon from '@/components/HighImpactEventRibbon';
+import LandingCelebration from '@/components/LandingCelebration';
+import LiveLandingUpdates from '@/components/LiveLandingUpdates';
 import { db, toDirectImageUrl } from '@/lib/db';
 
 // Dynamically import heavy interactive components to disable SSR hydration warnings and optimize initial LCP
@@ -44,6 +46,8 @@ export default function Home() {
     <div className="w-full flex flex-col items-center">
 
       <HighImpactEventRibbon />
+      <LandingCelebration />
+      <LiveLandingUpdates />
 
       {/* 1. HERO SECTION */}
       <section className="relative w-full min-h-[90vh] lg:min-h-screen flex items-center overflow-hidden py-16 lg:py-24 z-10 hero-section">

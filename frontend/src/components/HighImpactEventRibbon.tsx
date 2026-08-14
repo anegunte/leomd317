@@ -9,9 +9,25 @@ export default function HighImpactEventRibbon() {
   const [events, setEvents] = useState<LeoEvent[]>([]);
 
   useEffect(() => {
-    db.getEvents()
-      .then((allEvents) => setEvents(allEvents.filter((event) => event.status === 'upcoming' && event.isHighImpact && event.registrationLink)))
-      .catch(() => setEvents([]));
+    let mounted = true;
+
+    const refreshEvents = async () => {
+      try {
+        const allEvents = await db.getEvents();
+        if (mounted) {
+          setEvents(allEvents.filter((event) => event.status === 'upcoming' && event.isHighImpact && event.registrationLink));
+        }
+      } catch {
+        // Keep the most recently displayed ribbon if the API is briefly unavailable.
+      }
+    };
+
+    refreshEvents();
+    window.addEventListener('leo-events-updated', refreshEvents);
+    return () => {
+      mounted = false;
+      window.removeEventListener('leo-events-updated', refreshEvents);
+    };
   }, []);
 
   if (!events.length) return null;

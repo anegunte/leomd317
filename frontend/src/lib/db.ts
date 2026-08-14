@@ -261,6 +261,19 @@ export const db = {
     return apiFetch('/isame', { method: 'PUT', body: JSON.stringify(settings) });
   },
 
+  // ── Landing-page celebration signal ──
+  async getCelebration(): Promise<{ nonce: string | null; launchedAt?: string }> {
+    return apiFetch('/celebration');
+  },
+
+  async launchCelebration(): Promise<{ nonce: string; launchedAt: string }> {
+    return apiFetch('/celebration/launch', { method: 'POST' });
+  },
+
+  getLiveUpdatesUrl(): string {
+    return `${API_BASE}/live/stream`;
+  },
+
   // ── Authentication ──
   async login(username: string, password: string) {
     const session = await apiFetch<any>('/auth/login', {

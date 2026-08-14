@@ -42,6 +42,7 @@ export default function AdminDashboard() {
   const [counters, setCounters] = useState<any[]>([]);
   const [tickerItems, setTickerItems] = useState<any[]>([]);
   const [isameSettings, setIsameSettings] = useState<IsameSettings>(DEFAULT_ISAME_SETTINGS);
+  const [launchingConfetti, setLaunchingConfetti] = useState(false);
 
   // The same form is used for a new record and for an existing record.
   const [editingProject, setEditingProject] = useState<ServiceProject | null>(null);
@@ -155,6 +156,18 @@ export default function AdminDashboard() {
     db.logout();
     window.dispatchEvent(new Event('leo-auth-change'));
     router.push('/');
+  };
+
+  const handleLaunchConfetti = async () => {
+    setLaunchingConfetti(true);
+    try {
+      await db.launchCelebration();
+      alert('Celebration launched! Open landing pages will receive the gold-and-silver burst in about a second.');
+    } catch {
+      alert('Unable to launch the celebration. Please check that the backend is running.');
+    } finally {
+      setLaunchingConfetti(false);
+    }
   };
 
   // Simulating changing roles directly on the UI for quick evaluation
@@ -274,11 +287,15 @@ export default function AdminDashboard() {
     if (!evtTitle || !evtDate || !evtLocation) { alert('Fill all required fields'); return; }
     if (evtHighImpact && !evtRegLink) { alert('A high-impact event needs a registration link so the live ribbon has somewhere to send visitors.'); return; }
     const event = { title: evtTitle, description: evtDesc, date: evtDate, location: evtLocation, district: evtDistrict, status: evtStatus, poster: evtPoster, registrationLink: evtRegLink, organizingTeam: evtClub, isHighImpact: evtHighImpact, highImpactMessage: evtImpactMessage };
+    const shouldCelebrate = evtHighImpact && !editingEvent?.isHighImpact;
     if (editingEvent) await db.updateEvent({ ...editingEvent, ...event });
     else await db.addEvent(event);
+    if (shouldCelebrate) await db.launchCelebration();
     const wasEditing = Boolean(editingEvent);
     resetEventForm(); loadData();
-    alert(wasEditing ? 'Event updated successfully!' : 'Event created successfully!');
+    alert(shouldCelebrate
+      ? 'High-impact event published! The home-page ribbon and celebration will go live in about a second.'
+      : wasEditing ? 'Event updated successfully!' : 'Event created successfully!');
   };
 
   const resetCabinetForm = () => {
@@ -456,6 +473,15 @@ export default function AdminDashboard() {
             <Sparkles size={14} className="text-gold-primary animate-pulse" />
             AI Impact Narrator
           </Link>
+
+          <button
+            onClick={handleLaunchConfetti}
+            disabled={launchingConfetti}
+            className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl border border-gold-primary/25 bg-gold-primary/[0.06] hover:bg-gold-primary/15 disabled:opacity-60 text-gold-light transition-all text-left"
+          >
+            <Sparkles size={14} className="text-gold-primary" />
+            {launchingConfetti ? 'Launching Celebration…' : 'Launch Landing Celebration'}
+          </button>
 
           <button
             onClick={handleLogout}

@@ -21,6 +21,11 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Beyond Boundaries | Leo MD 317 Digital Leadership & Impact Platform",
   description: "The digital headquarters of Leo Multiple District 317. Centralizing youth leadership, interactive service analytics, real-time district tracking, and annual impact reports across 7 districts in Karnataka.",
+  icons: {
+    icon: '/leo-md317-favicon.ico?v=2027',
+    shortcut: '/leo-md317-favicon.ico?v=2027',
+    apple: '/logo.jpg',
+  },
   keywords: ["Leo Clubs", "Lions Clubs", "Leo MD 317", "Karnataka youth leadership", "service impact analytics", "non-profit dashboard", "Beyond Boundaries"],
   authors: [{ name: "Leo Multiple District 317 Cabinet" }],
   openGraph: {
