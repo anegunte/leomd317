@@ -72,6 +72,10 @@ export interface LeoEvent {
   club?: string;
   status: 'upcoming' | 'past';
   attendeesCount?: number;
+  /** Enables the prominent rolling announcement on the home page. */
+  isHighImpact?: boolean;
+  /** Optional short announcement shown in the rolling ribbon. */
+  highImpactMessage?: string;
 }
 
 export interface MediaItem {

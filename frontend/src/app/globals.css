@@ -201,6 +201,16 @@ body {
   animation-play-state: paused;
 }
 
+/* Two equal event tracks create a continuous right-to-left loop with no restart gap. */
+@keyframes priority-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-priority-marquee {
+  animation: priority-marquee 42s linear infinite;
+  will-change: transform;
+}
+
 /* Fade-in animation */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(16px); }

@@ -60,6 +60,8 @@ export default function AdminDashboard() {
   const [evtPoster, setEvtPoster] = useState('');
   const [evtClub, setEvtClub] = useState('');
   const [evtRegLink, setEvtRegLink] = useState('');
+  const [evtHighImpact, setEvtHighImpact] = useState(false);
+  const [evtImpactMessage, setEvtImpactMessage] = useState('');
 
   // Cabinet member form
   const [cabName, setCabName] = useState('');
@@ -257,20 +259,21 @@ export default function AdminDashboard() {
 
   const resetEventForm = () => {
     setEditingEvent(null); setEvtTitle(''); setEvtDesc(''); setEvtDate(''); setEvtLocation('');
-    setEvtDistrict('317A'); setEvtStatus('upcoming'); setEvtPoster(''); setEvtClub(''); setEvtRegLink('');
+    setEvtDistrict('317A'); setEvtStatus('upcoming'); setEvtPoster(''); setEvtClub(''); setEvtRegLink(''); setEvtHighImpact(false); setEvtImpactMessage('');
   };
 
   const startEditEvent = (event: LeoEvent) => {
     setEditingEvent(event); setEvtTitle(event.title); setEvtDesc(event.description || '');
     setEvtDate(event.date ? event.date.slice(0, 16) : ''); setEvtLocation(event.location);
     setEvtDistrict(event.district); setEvtStatus(event.status); setEvtPoster(event.poster || '');
-    setEvtClub(event.organizingTeam || ''); setEvtRegLink(event.registrationLink || '');
+    setEvtClub(event.organizingTeam || ''); setEvtRegLink(event.registrationLink || ''); setEvtHighImpact(Boolean(event.isHighImpact)); setEvtImpactMessage(event.highImpactMessage || '');
   };
 
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!evtTitle || !evtDate || !evtLocation) { alert('Fill all required fields'); return; }
-    const event = { title: evtTitle, description: evtDesc, date: evtDate, location: evtLocation, district: evtDistrict, status: evtStatus, poster: evtPoster, registrationLink: evtRegLink, organizingTeam: evtClub };
+    if (evtHighImpact && !evtRegLink) { alert('A high-impact event needs a registration link so the live ribbon has somewhere to send visitors.'); return; }
+    const event = { title: evtTitle, description: evtDesc, date: evtDate, location: evtLocation, district: evtDistrict, status: evtStatus, poster: evtPoster, registrationLink: evtRegLink, organizingTeam: evtClub, isHighImpact: evtHighImpact, highImpactMessage: evtImpactMessage };
     if (editingEvent) await db.updateEvent({ ...editingEvent, ...event });
     else await db.addEvent(event);
     const wasEditing = Boolean(editingEvent);
@@ -951,6 +954,7 @@ export default function AdminDashboard() {
                     <div>
                       <h5 className="text-xs font-bold text-white">{evt.title}</h5>
                       <span className="text-[9px] text-silver-dark">{evt.location} &bull; {new Date(evt.date).toLocaleDateString()} &bull; <span className={evt.status === 'upcoming' ? 'text-green-400' : 'text-silver-dark'}>{evt.status}</span></span>
+                      {evt.isHighImpact && <span className="mt-1 inline-flex rounded border border-gold-primary/30 bg-gold-primary/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-gold-light">High impact ribbon</span>}
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => startEditEvent(evt)} className="p-1.5 rounded-full border border-white/10 hover:border-gold-primary text-gold-light" title="Edit event"><Edit3 size={13} /></button>
@@ -974,6 +978,19 @@ export default function AdminDashboard() {
                   <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Date & Time</label>
                   <input type="datetime-local" value={evtDate} onChange={e => setEvtDate(e.target.value)} required className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg focus:outline-none focus:border-gold-primary text-xs" />
                 </div>
+              </div>
+              <div className="rounded-xl border border-gold-primary/20 bg-gold-primary/[0.035] p-4 space-y-3">
+                <label className="flex cursor-pointer items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-gold-light">
+                  <input type="checkbox" checked={evtHighImpact} onChange={e => setEvtHighImpact(e.target.checked)} className="h-4 w-4 accent-[#d4af37]" />
+                  Mark as high-impact event
+                </label>
+                <p className="text-[9px] leading-relaxed text-silver-dark">High-impact upcoming events appear in a gold rolling announcement below the home-page navbar. A registration link is required.</p>
+                {evtHighImpact && (
+                  <div>
+                    <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Rolling Announcement Text</label>
+                    <input type="text" value={evtImpactMessage} onChange={e => setEvtImpactMessage(e.target.value)} placeholder="e.g. Registrations now open — join us in Goa" className="w-full px-2.5 py-2 bg-bg-deep-space border border-gold-primary/30 rounded-lg focus:outline-none focus:border-gold-primary text-xs" />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-[8px] uppercase tracking-wider text-silver-dark mb-1">Description</label>
