@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: leomd317
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: leomd317
+  template:
+    metadata:
+      labels:
+        app: leomd317
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: web
+          image: ghcr.io/your-org/leomd317:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: leomd317-runtime
+                  key: mongo-uri
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: leomd317-runtime
+                  key: secret-key
+            - name: DB_NAME
+              value: leomd317
+            - name: GUNICORN_WORKERS
+              value: "2"
+            - name: GUNICORN_WORKER_CLASS
+              value: gevent
+            - name: GUNICORN_WORKER_CONNECTIONS
+              value: "1000"
+            - name: GUNICORN_TIMEOUT
+              value: "120"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: leomd317
+spec:
+  selector:
+    app: leomd317
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: leomd317
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: leomd317
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: leomd317
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: leomd317

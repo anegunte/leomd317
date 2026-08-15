@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from database import db
 from routes.live import publish_live_event
+from security import can_manage_scoped_record, scoped_access_error
 
 events_bp = Blueprint("events", __name__)
 collection = db["events"]
@@ -29,9 +30,11 @@ def get_event(event_id):
 
 @events_bp.route("", methods=["POST"])
 def create_event():
-    data = request.get_json()
+    data = request.get_json() or {}
     if not data.get("title"):
         return jsonify({"error": "title is required"}), 400
+    if not can_manage_scoped_record(None, data, district_field="district"):
+        return scoped_access_error()
     import time
     data.setdefault("id", f"evt-{int(time.time() * 1000)}")
     collection.insert_one(data)
@@ -42,11 +45,14 @@ def create_event():
 
 @events_bp.route("/<event_id>", methods=["PUT"])
 def update_event(event_id):
-    data = request.get_json()
+    data = request.get_json() or {}
     data.pop("_id", None)
-    result = collection.update_one({"id": event_id}, {"$set": data})
-    if result.matched_count == 0:
+    existing = collection.find_one({"id": event_id}, {"_id": 0})
+    if not existing:
         return jsonify({"error": "Event not found"}), 404
+    if not can_manage_scoped_record(existing, data, district_field="district"):
+        return scoped_access_error()
+    result = collection.update_one({"id": event_id}, {"$set": data})
     updated = collection.find_one({"id": event_id}, {"_id": 0})
     publish_live_event("events-updated")
     return jsonify(updated)
@@ -54,8 +60,11 @@ def update_event(event_id):
 
 @events_bp.route("/<event_id>", methods=["DELETE"])
 def delete_event(event_id):
-    result = collection.delete_one({"id": event_id})
-    if result.deleted_count == 0:
+    existing = collection.find_one({"id": event_id}, {"_id": 0})
+    if not existing:
         return jsonify({"error": "Event not found"}), 404
+    if not can_manage_scoped_record(existing, None, district_field="district"):
+        return scoped_access_error()
+    result = collection.delete_one({"id": event_id})
     publish_live_event("events-updated")
     return jsonify({"message": "Event deleted"})

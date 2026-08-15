@@ -1,0 +1,17 @@
+.git
+.gitignore
+**/.DS_Store
+**/__pycache__
+**/*.py[cod]
+**/.next
+**/node_modules
+**/venv
+**/.venv
+backend/.env
+frontend/.env*
+*.md
+
+# Environment files
+.env
+*.env
+.env.*

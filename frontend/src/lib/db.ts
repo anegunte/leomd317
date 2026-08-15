@@ -41,12 +41,21 @@ export function toDirectImageUrl(url: string): string {
 // ── Generic fetch helper ──
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   try {
+    const headers = new Headers(options?.headers);
+    headers.set('Content-Type', 'application/json');
+    const session = getSession();
+    if (session?.token) headers.set('Authorization', `Bearer ${session.token}`);
+
     const res = await fetch(`${API_BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
       ...options,
+      headers,
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
+      if (res.status === 401 && path !== '/auth/login' && typeof window !== 'undefined') {
+        localStorage.removeItem(SESSION_KEY);
+        window.dispatchEvent(new Event('leo-auth-change'));
+      }
       throw new Error(err.error || res.statusText);
     }
     return res.json();
@@ -286,6 +295,14 @@ export const db = {
 
   getCurrentUser() {
     return getSession();
+  },
+
+  async verifySession() {
+    const verified = await apiFetch<any>('/auth/me');
+    const current = getSession();
+    const session = { ...current, ...verified };
+    setSession(session);
+    return session;
   },
 
   logout() {

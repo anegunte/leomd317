@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Produce a minimal runtime bundle for the production container image.
+  output: 'standalone',
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
   reactStrictMode: true,
   compress: true,

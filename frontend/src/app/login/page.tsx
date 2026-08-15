@@ -12,18 +12,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [demoUsers, setDemoUsers] = useState<{username: string; name: string; role: string; district: string; club?: string}[]>([]);
 
   useEffect(() => {
     // If already logged in, redirect directly to admin panel
     if (db.getCurrentUser()) {
       router.push('/admin');
     }
-    // Fetch demo users from backend
-    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api') + '/auth/users')
-      .then(r => r.json())
-      .then(setDemoUsers)
-      .catch(() => {});
   }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -41,11 +35,6 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const prefillCredentials = (userObj: {username: string}) => {
-    setUsername(userObj.username);
-    setPassword('password123');
   };
 
   return (
@@ -133,29 +122,6 @@ export default function Login() {
             <ArrowRight size={14} />
           </button>
         </form>
-
-        {/* DEMO EVALUATOR HELPER */}
-        <div className="mt-8 pt-6 border-t border-white/5">
-          <h4 className="text-[9px] tracking-widest uppercase font-bold text-gold-light mb-3">
-            Demo Credentials (Quick Login)
-          </h4>
-          <p className="text-[9px] text-silver-dark mb-4 leading-normal">
-            For MIT/Ivy league review, select any administrative role below to instantly pre-fill the secure credentials:
-          </p>
-          <div className="grid grid-cols-2 gap-2 text-[9px] font-semibold text-silver-primary">
-            {demoUsers.map((user) => (
-              <button
-                key={user.username}
-                onClick={() => prefillCredentials(user)}
-                className="p-2 rounded bg-white/3 border border-white/5 hover:border-gold-primary/25 hover:bg-gold-primary/5 transition-all text-left truncate"
-                title={`${user.role} - ${user.name}`}
-              >
-                <div className="text-white truncate">{user.role}</div>
-                <div className="text-[8px] text-gold-primary mt-0.5 truncate">{user.username}</div>
-              </button>
-            ))}
-          </div>
-        </div>
 
       </div>
 

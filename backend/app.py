@@ -1,8 +1,44 @@
-from flask import Flask
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+from pymongo.errors import PyMongoError
+
+from config import CORS_ORIGINS, SECRET_KEY
+from security import authenticate_request, is_global_admin
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+app.config["SECRET_KEY"] = SECRET_KEY
+CORS(
+    app,
+    resources={r"/api/*": {"origins": CORS_ORIGINS}},
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+_WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+_GLOBAL_ADMIN_PREFIXES = (
+    "/api/districts",
+    "/api/cabinet",
+    "/api/lion-cabinet",
+    "/api/site-settings",
+    "/api/about",
+    "/api/isame",
+    "/api/celebration",
+)
+
+
+@app.before_request
+def protect_mutating_api_routes():
+    """Require an authenticated server-side admin for every API write."""
+    if request.method not in _WRITE_METHODS or not request.path.startswith("/api/"):
+        return None
+    if request.path == "/api/auth/login":
+        return None
+
+    user, error = authenticate_request()
+    if error:
+        return error
+    if request.path.startswith(_GLOBAL_ADMIN_PREFIXES) and not is_global_admin(user):
+        return jsonify({"error": "This action requires Multiple District administrator access."}), 403
+    return None
 
 # Register blueprints
 from routes.auth import auth_bp
@@ -37,6 +73,13 @@ app.register_blueprint(live_bp, url_prefix="/api/live")
 @app.route("/api/health", methods=["GET"])
 def health():
     from config import DB_NAME
+    from database import db
+
+    try:
+        db.client.admin.command("ping")
+    except PyMongoError:
+        return {"status": "unavailable", "database": DB_NAME}, 503
+
     return {"status": "ok", "database": DB_NAME}
 
 

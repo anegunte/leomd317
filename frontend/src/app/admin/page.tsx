@@ -143,13 +143,26 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    const currentUser = db.getCurrentUser();
-    if (!currentUser) {
-      router.push('/login');
-      return;
-    }
-    setUser(currentUser);
-    loadData();
+    let active = true;
+
+    const initializeDashboard = async () => {
+      if (!db.getCurrentUser()) {
+        router.push('/login');
+        return;
+      }
+      try {
+        const verifiedUser = await db.verifySession();
+        if (!active) return;
+        setUser(verifiedUser);
+        await loadData();
+      } catch {
+        db.logout();
+        if (active) router.push('/login');
+      }
+    };
+
+    initializeDashboard();
+    return () => { active = false; };
   }, [router]);
 
   const handleLogout = () => {
@@ -168,22 +181,6 @@ export default function AdminDashboard() {
     } finally {
       setLaunchingConfetti(false);
     }
-  };
-
-  // Simulating changing roles directly on the UI for quick evaluation
-  const handleSimulateRole = (role: string) => {
-    if (!user) return;
-    let dist = "317";
-    let clb = undefined;
-    if (role === 'District Admin') dist = '317A';
-    if (role === 'Club Admin') {
-      dist = '317A';
-      clb = 'Leo Club of RVCE';
-    }
-    const simulated = { ...user, role, district: dist, club: clb };
-    localStorage.setItem('leo_user_session', JSON.stringify(simulated));
-    setUser(simulated);
-    window.dispatchEvent(new Event('leo-auth-change'));
   };
 
   const resetProjectForm = () => {
@@ -348,16 +345,14 @@ export default function AdminDashboard() {
   const isSuper = user.role === 'Super Admin';
   const isMD = user.role === 'MD Admin' || isSuper;
   const isDistrict = user.role === 'District Admin' || isMD;
-  const isClub = user.role === 'Club Admin' || isDistrict;
-
-  // Filter lists based on simulated roles to prove access restriction works!
+  // These filters mirror the scopes now enforced by the backend.
   const manageableClubs = clubs.filter(c => isMD || (isDistrict && c.districtId === user.district) || (user.club && c.name === user.club));
   const manageableProjects = projects.filter(p => isMD || (isDistrict && p.district === user.district) || (user.club && p.club === user.club));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch optimize-rendering-heavy">
 
-      {/* 1. LHS SIDEBAR & SIMULATION HUB (3 cols) */}
+      {/* 1. LHS SIDEBAR (3 cols) */}
       <div className="lg:col-span-3 flex flex-col gap-6">
 
         {/* User Card */}
@@ -490,31 +485,6 @@ export default function AdminDashboard() {
             <LogOut size={14} />
             Logout Command
           </button>
-        </div>
-
-        {/* DEMO EVALUATOR ROLE SWITCHER */}
-        <div className="glass-panel rounded-2xl p-5 border border-white/10 text-xs">
-          <h4 className="text-[9px] tracking-widest uppercase font-bold text-gold-light mb-2 flex items-center gap-1">
-            <Sparkles size={10} className="text-gold-primary fill-gold-primary" />
-            Simulate Role Switch
-          </h4>
-          <p className="text-[9px] text-silver-dark mb-4 leading-normal">
-            Toggle administrative access scopes on-the-fly to test district directory filtering:
-          </p>
-          <div className="flex flex-col gap-1.5 font-semibold">
-            {['Super Admin', 'MD Admin', 'District Admin', 'Club Admin'].map((role) => (
-              <button
-                key={role}
-                onClick={() => handleSimulateRole(role)}
-                className={`w-full py-2 px-3 rounded text-[9px] text-left border transition-all ${user.role === role
-                    ? 'bg-gold-primary/10 border-gold-primary/50 text-gold-light'
-                    : 'bg-white/3 border-transparent hover:border-white/10 text-silver-primary'
-                  }`}
-              >
-                {role} View
-              </button>
-            ))}
-          </div>
         </div>
 
       </div>

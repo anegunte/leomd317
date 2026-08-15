@@ -437,10 +437,3 @@ export const MOCK_MEDIA: MediaItem[] = [
   { id: "med-4", url: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=800", thumbnail: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=400", type: "photo", category: "Service Projects", title: "Eco-Pulse Reforestation Drive", district: "317A" },
   { id: "med-5", url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=800", thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=400", type: "photo", category: "Installations", title: "317C Officers Installation Night", district: "317C" }
 ];
-
-export const MOCK_USERS = [
-  { username: "superadmin", password: "password123", name: "Leo Lion A Vaishnavi mjf", role: "Super Admin", district: "317" },
-  { username: "mdadmin", password: "password123", name: "Leo Lion A Vaishnavi mjf", role: "MD Admin", district: "317" },
-  { username: "distadmin317a", password: "password123", name: "Leo Shruthi K.R.", role: "District Admin", district: "317A" },
-  { username: "clubadminrvce", password: "password123", name: "Leo Chethan M.", role: "Club Admin", district: "317A", club: "Leo Club of RVCE" }
-];

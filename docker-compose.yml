@@ -1,0 +1,18 @@
+services:
+  leomd317:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_API_URL: /api
+    image: leomd317:local
+    ports:
+      - "8080:8080"
+    environment:
+      MONGO_URI: ${MONGO_URI:?Set MONGO_URI in your shell or pass --env-file backend/.env}
+      DB_NAME: ${DB_NAME:-leomd317}
+      SECRET_KEY: ${SECRET_KEY:?Set a 32+ character SECRET_KEY in backend/.env}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      GUNICORN_WORKER_CLASS: ${GUNICORN_WORKER_CLASS:-gevent}
+      GUNICORN_WORKER_CONNECTIONS: ${GUNICORN_WORKER_CONNECTIONS:-1000}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+    restart: unless-stopped
