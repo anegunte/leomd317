@@ -13,6 +13,64 @@ const LinkedinIcon = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
+function DirectoryLoadingState({ activeTab }: { activeTab: 'md' | 'lion' | 'district' | 'clubs' }) {
+  const isCabinet = activeTab === 'md' || activeTab === 'lion';
+  const cardCount = activeTab === 'clubs' ? 3 : 4;
+
+  return (
+    <div
+      className="animate-pulse"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading directory information"
+    >
+      <div className="mb-6 flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-light/80">
+        <span className="h-1.5 w-1.5 rounded-full bg-gold-primary shadow-[0_0_10px_rgba(226,188,45,0.95)]" />
+        Synchronizing leadership network
+      </div>
+
+      {activeTab === 'district' ? (
+        <div className="space-y-6">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="glass-panel rounded-2xl border border-white/10 p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-3">
+                  <div className="h-4 w-24 rounded bg-gold-primary/15" />
+                  <div className="h-5 w-52 rounded bg-white/10" />
+                </div>
+                <div className="h-5 w-5 rounded bg-white/10" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={`grid grid-cols-1 ${isCabinet ? 'sm:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-3'} gap-6 sm:gap-8`}>
+          {Array.from({ length: cardCount }).map((_, item) => (
+            <div key={item} className={`glass-panel overflow-hidden border border-white/5 ${isCabinet ? 'min-h-[360px] rounded-3xl' : 'min-h-[220px] rounded-2xl p-5'}`}>
+              {isCabinet ? (
+                <>
+                  <div className="aspect-square w-full bg-gradient-to-br from-white/[0.07] via-white/[0.03] to-bg-deep-space" />
+                  <div className="space-y-3 p-6">
+                    <div className="h-5 w-3/4 rounded bg-white/10" />
+                    <div className="h-3 w-1/2 rounded bg-white/[0.07]" />
+                    <div className="mt-8 h-px w-full bg-white/[0.06]" />
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-5">
+                  <div className="flex justify-between"><div className="h-4 w-20 rounded bg-gold-primary/15" /><div className="h-3 w-16 rounded bg-white/[0.07]" /></div>
+                  <div className="h-5 w-3/4 rounded bg-white/10" />
+                  <div className="space-y-3 border-t border-white/[0.06] pt-4"><div className="h-3 w-full rounded bg-white/[0.07]" /><div className="h-3 w-4/5 rounded bg-white/[0.07]" /></div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Directory() {
   const [districts, setDistricts] = useState<DistrictData[]>([]);
   const [clubs, setClubs] = useState<ClubData[]>([]);
@@ -22,19 +80,36 @@ export default function Directory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDistrictFilter, setSelectedDistrictFilter] = useState('All');
   const [expandedCabinetDistrict, setExpandedCabinetDistrict] = useState<string | null>('317A');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isCurrent = true;
+
     const fetchData = async () => {
-      const d = await db.getDistricts();
-      const c = await db.getClubs();
-      const m = await db.getMDCabinet();
-      const l = await db.getLionCabinet();
-      setDistricts(d);
-      setClubs(c);
-      setMdCabinet(m);
-      setLionCabinet(l);
+      try {
+        const [d, c, m, l] = await Promise.all([
+          db.getDistricts(),
+          db.getClubs(),
+          db.getMDCabinet(),
+          db.getLionCabinet(),
+        ]);
+
+        if (!isCurrent) return;
+        setDistricts(d);
+        setClubs(c);
+        setMdCabinet(m);
+        setLionCabinet(l);
+      } catch (error) {
+        console.error('Unable to load directory data', error);
+      } finally {
+        if (isCurrent) setIsLoading(false);
+      }
     };
+
     fetchData();
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   // Filters logic
@@ -148,6 +223,7 @@ export default function Directory() {
         </button>
       </div>
 
+      {isLoading ? <DirectoryLoadingState activeTab={activeTab} /> : <>
       {/* 1. TAB CONTENT: MD CABINET */}
       {activeTab === 'md' && (
         <div>
@@ -404,7 +480,7 @@ export default function Directory() {
           )}
         </div>
       )}
-
+      </>}
     </div>
   );
 }
