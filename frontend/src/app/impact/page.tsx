@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { db, toDirectImageUrl } from '@/lib/db';
 import { ServiceProject } from '@/lib/mockData';
 import { Search, MapPin, Users, Clock, Award, Play, X, Calendar, PlusCircle } from 'lucide-react';
+import PageDataLoader from '@/components/PageDataLoader';
 
 export default function Impact() {
   const [projects, setProjects] = useState<ServiceProject[]>([]);
@@ -11,11 +12,17 @@ export default function Impact() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All');
   const [activeProjectModal, setActiveProjectModal] = useState<ServiceProject | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchProjects = async () => {
-      const p = await db.getProjects();
-      setProjects(p);
+      try {
+        setProjects(await db.getProjects());
+      } catch (error) {
+        console.error('Unable to load impact projects', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchProjects();
   }, []);
@@ -63,6 +70,7 @@ export default function Impact() {
         </p>
       </div>
 
+      {isLoading ? <PageDataLoader variant="cards" label="Synchronizing service impact" /> : <>
       {/* AGGREGATED STATS COMMAND GRID */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
         <div className="glass-panel rounded-2xl p-5 border border-white/5">
@@ -222,6 +230,8 @@ export default function Impact() {
           No service projects found matching your filter selection.
         </div>
       )}
+
+      </>}
 
       {/* DETAIL DIALOG MODAL OVERLAY */}
       {activeProjectModal && (

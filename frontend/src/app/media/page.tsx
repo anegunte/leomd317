@@ -4,16 +4,23 @@ import React, { useState, useEffect } from 'react';
 import { db, toDirectImageUrl } from '@/lib/db';
 import { MediaItem } from '@/lib/mockData';
 import { Image, Video, Eye, X, Filter, Download } from 'lucide-react';
+import PageDataLoader from '@/components/PageDataLoader';
 
 export default function MediaHub() {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [activeMediaModal, setActiveMediaModal] = useState<MediaItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchMedia = async () => {
-      const m = await db.getMedia();
-      setMediaItems(m);
+      try {
+        setMediaItems(await db.getMedia());
+      } catch (error) {
+        console.error('Unable to load media', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchMedia();
   }, []);
@@ -61,7 +68,7 @@ export default function MediaHub() {
       </div>
 
       {/* Gallery Grid */}
-      {filteredMedia.length > 0 ? (
+      {isLoading ? <PageDataLoader variant="gallery" label="Synchronizing media archive" /> : filteredMedia.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMedia.map((item) => (
             <div

@@ -91,6 +91,19 @@ export const db = {
     return apiFetch('/districts');
   },
 
+  async addDistrictCabinetMember(districtId: string, member: Omit<LeoProfile, 'id' | 'district'>): Promise<LeoProfile> {
+    return apiFetch(`/districts/${districtId}/cabinet`, { method: 'POST', body: JSON.stringify(member) });
+  },
+
+  async updateDistrictCabinetMember(districtId: string, member: LeoProfile): Promise<LeoProfile> {
+    return apiFetch(`/districts/${districtId}/cabinet/${member.id}`, { method: 'PUT', body: JSON.stringify(member) });
+  },
+
+  async deleteDistrictCabinetMember(districtId: string, memberId: string): Promise<boolean> {
+    await apiFetch(`/districts/${districtId}/cabinet/${memberId}`, { method: 'DELETE' });
+    return true;
+  },
+
   // ── Clubs ──
   async getClubs(): Promise<ClubData[]> {
     return apiFetch('/clubs');

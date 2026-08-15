@@ -5,21 +5,27 @@ import { db } from '@/lib/db';
 import { ServiceProject, ClubData, DistrictData } from '@/lib/mockData';
 import { FileText, Download, Award, ShieldAlert, BarChart2, Star, TrendingUp } from 'lucide-react';
 import jsPDF from 'jspdf';
+import PageDataLoader from '@/components/PageDataLoader';
 
 export default function Reports() {
   const [projects, setProjects] = useState<ServiceProject[]>([]);
   const [clubs, setClubs] = useState<ClubData[]>([]);
   const [districts, setDistricts] = useState<DistrictData[]>([]);
   const [exporting, setExporting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const p = await db.getProjects();
-      const c = await db.getClubs();
-      const d = await db.getDistricts();
-      setProjects(p);
-      setClubs(c);
-      setDistricts(d);
+      try {
+        const [p, c, d] = await Promise.all([db.getProjects(), db.getClubs(), db.getDistricts()]);
+        setProjects(p);
+        setClubs(c);
+        setDistricts(d);
+      } catch (error) {
+        console.error('Unable to load report data', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchData();
   }, []);
@@ -336,6 +342,7 @@ export default function Reports() {
         </p>
       </div>
 
+      {isLoading ? <PageDataLoader variant="wide" label="Compiling service intelligence" /> : <>
       {/* CORE INFO SHEET */}
       <div className="glass-panel rounded-3xl p-8 border border-white/10 mb-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
@@ -443,6 +450,8 @@ export default function Reports() {
         </div>
 
       </div>
+
+      </>}
 
     </div>
   );

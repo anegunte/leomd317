@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { Globe2, History, Compass, Shield, Target, Lightbulb } from 'lucide-react';
 import { db } from '@/lib/db';
+import PageDataLoader from '@/components/PageDataLoader';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const PILLAR_ICONS: Record<string, any> = { Globe2, Target, Shield, Lightbulb };
@@ -22,10 +23,21 @@ const DEFAULT_PILLAR_COLOR = 'from-gold-primary to-gold-hover';
 export default function About() {
   const [aboutContent, setAboutContent] = useState<any>(null);
   const [pillars, setPillars] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    db.getAbout().then(setAboutContent).catch(() => {});
-    db.getThemePillars().then(setPillars).catch(() => {});
+    const loadAbout = async () => {
+      try {
+        const [content, themePillars] = await Promise.all([db.getAbout(), db.getThemePillars()]);
+        setAboutContent(content);
+        setPillars(themePillars);
+      } catch (error) {
+        console.error('Unable to load about content', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadAbout();
   }, []);
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -64,6 +76,7 @@ export default function About() {
         </p>
       </div>
 
+      {isLoading ? <PageDataLoader variant="wide" label="Synchronizing our movement" /> : <>
       {/* Grid: Global Leo & MD 317 History */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-28">
 
@@ -177,6 +190,8 @@ export default function About() {
         </motion.div>
 
       </div>
+
+      </>}
 
     </div>
   );

@@ -21,6 +21,7 @@ import AnimatedCounter from '@/components/AnimatedCounter';
 import HighImpactEventRibbon from '@/components/HighImpactEventRibbon';
 import LandingCelebration from '@/components/LandingCelebration';
 import LiveLandingUpdates from '@/components/LiveLandingUpdates';
+import PageDataLoader from '@/components/PageDataLoader';
 import { db, toDirectImageUrl } from '@/lib/db';
 
 // Dynamically import heavy interactive components to disable SSR hydration warnings and optimize initial LCP
@@ -34,12 +35,25 @@ export default function Home() {
   const [counters, setCounters] = useState<any[]>([]);
   const [ticker, setTicker] = useState<any[]>([]);
   const [stories, setStories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    db.getSiteSettings().then(setSiteSettings).catch(() => {});
-    db.getCounters().then(setCounters).catch(() => {});
-    db.getTicker().then(setTicker).catch(() => {});
-    db.getStories().then(setStories).catch(() => {});
+    const loadHome = async () => {
+      try {
+        const [settings, dashboardCounters, tickerItems, storyItems] = await Promise.all([
+          db.getSiteSettings(), db.getCounters(), db.getTicker(), db.getStories(),
+        ]);
+        setSiteSettings(settings);
+        setCounters(dashboardCounters);
+        setTicker(tickerItems);
+        setStories(storyItems);
+      } catch (error) {
+        console.error('Unable to load landing page data', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadHome();
   }, []);
 
   return (
@@ -112,7 +126,7 @@ export default function Home() {
 
           {/* Ticker scrolling items */}
           <div className="w-full overflow-hidden relative">
-            <div className="inline-flex gap-16 animate-marquee whitespace-nowrap text-[10px] text-silver-primary/80 font-medium tracking-widest uppercase">
+            {isLoading ? <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-light/80"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold-primary" />Synchronizing live activity</div> : <div className="inline-flex gap-16 animate-marquee whitespace-nowrap text-[10px] text-silver-primary/80 font-medium tracking-widest uppercase">
               {ticker.map((item, i) => (
                 <span key={item.id || i}>{item.text}</span>
               ))}
@@ -120,7 +134,7 @@ export default function Home() {
               {ticker.map((item, i) => (
                 <span key={`dup-${item.id || i}`}>{item.text}</span>
               ))}
-            </div>
+            </div>}
           </div>
         </div>
       </div>
@@ -142,7 +156,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {isLoading ? <PageDataLoader variant="cards" label="Synchronizing service intelligence" /> : <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {counters.map((c, i) => {
               const Icon = ICON_MAP[c.icon] || Sparkles;
               return (
@@ -159,7 +173,7 @@ export default function Home() {
                 </div>
               );
             })}
-          </div>
+          </div>}
         </div>
       </section>
 
@@ -497,7 +511,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {isLoading ? <PageDataLoader variant="gallery" label="Synchronizing visual archive" /> : <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {stories.map((story, i) => (
               <div key={story.id || i} className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-white/10 shadow-lg">
                 <Image
@@ -513,7 +527,7 @@ export default function Home() {
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
         </div>
       </section>
 

@@ -16,12 +16,14 @@ import {
   Edit3,
   CalendarCheck
 } from 'lucide-react';
+import PageDataLoader from '@/components/PageDataLoader';
 
 export default function Events() {
   const [events, setEvents] = useState<LeoEvent[]>([]);
   const [activeView, setActiveView] = useState<'month' | 'week' | 'agenda'>('month');
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Calendar dates math state
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 3)); // June 2026 based on mock data
@@ -38,8 +40,13 @@ export default function Events() {
   const [newDistrict, setNewDistrict] = useState('317A');
 
   const fetchEvents = async () => {
-    const evts = await db.getEvents();
-    setEvents(evts);
+    try {
+      setEvents(await db.getEvents());
+    } catch (error) {
+      console.error('Unable to load events', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -402,6 +409,7 @@ export default function Events() {
           <div className="space-y-6">
 
             {/* UPCOMING EVENTS LIST */}
+            {isLoading ? <PageDataLoader variant="wide" label="Synchronizing upcoming experiences" /> : <>
             {activeTab === 'upcoming' && (
               upcomingEvents.length > 0 ? (
                 upcomingEvents.map((event) => (
@@ -576,6 +584,7 @@ export default function Events() {
                 <div className="text-center py-20 text-xs text-silver-dark">No past event case studies logged.</div>
               )
             )}
+            </>}
 
           </div>
 

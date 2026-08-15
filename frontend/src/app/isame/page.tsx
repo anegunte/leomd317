@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { DEFAULT_ISAME_SETTINGS, IsameSettings } from '@/lib/isame';
+import PageDataLoader from '@/components/PageDataLoader';
 
 const pillars = [
   {
@@ -35,17 +36,20 @@ const pillars = [
 
 export default function IsameForumPage() {
   const [settings, setSettings] = useState<IsameSettings>(DEFAULT_ISAME_SETTINGS);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     db.getIsameSettings()
       .then((savedSettings) => setSettings({ ...DEFAULT_ISAME_SETTINGS, ...savedSettings }))
       .catch(() => {
         // Keep the carefully reviewed defaults visible if the API is offline.
-      });
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   return (
     <div className="w-full overflow-hidden">
+      {isLoading ? <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"><PageDataLoader variant="wide" label="Preparing the ISAME experience" /></div> : <>
       <section className="relative isolate min-h-[680px] overflow-hidden border-b border-gold-primary/15">
         <img
           src={settings.heroImage}
@@ -201,6 +205,7 @@ export default function IsameForumPage() {
           </p>
         </div>
       </section>
+      </>}
     </div>
   );
 }

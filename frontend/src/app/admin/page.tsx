@@ -24,11 +24,12 @@ import {
   Globe2
 } from 'lucide-react';
 import Link from 'next/link';
+import PageDataLoader from '@/components/PageDataLoader';
 
 export default function AdminDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'stats' | 'directory' | 'projects' | 'media' | 'events' | 'site' | 'cabinet' | 'lion' | 'isame'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'directory' | 'projects' | 'media' | 'events' | 'site' | 'cabinet' | 'district-cabinet' | 'lion' | 'isame'>('stats');
 
   // Database datasets state
   const [projects, setProjects] = useState<ServiceProject[]>([]);
@@ -43,12 +44,14 @@ export default function AdminDashboard() {
   const [tickerItems, setTickerItems] = useState<any[]>([]);
   const [isameSettings, setIsameSettings] = useState<IsameSettings>(DEFAULT_ISAME_SETTINGS);
   const [launchingConfetti, setLaunchingConfetti] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // The same form is used for a new record and for an existing record.
   const [editingProject, setEditingProject] = useState<ServiceProject | null>(null);
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
   const [editingEvent, setEditingEvent] = useState<LeoEvent | null>(null);
   const [editingCabinet, setEditingCabinet] = useState<LeoProfile | null>(null);
+  const [editingDistrictCabinet, setEditingDistrictCabinet] = useState<{ districtId: string; member: LeoProfile } | null>(null);
   const [editingLion, setEditingLion] = useState<LeoProfile | null>(null);
 
   // Event form
@@ -72,6 +75,15 @@ export default function AdminDashboard() {
   const [cabEmail, setCabEmail] = useState('');
   const [cabPhone, setCabPhone] = useState('');
   const [cabPhoto, setCabPhoto] = useState('');
+
+  // Form variables: District cabinet member
+  const [districtCabinetDistrict, setDistrictCabinetDistrict] = useState('317A');
+  const [districtCabinetName, setDistrictCabinetName] = useState('');
+  const [districtCabinetRole, setDistrictCabinetRole] = useState('');
+  const [districtCabinetClub, setDistrictCabinetClub] = useState('');
+  const [districtCabinetEmail, setDistrictCabinetEmail] = useState('');
+  const [districtCabinetPhone, setDistrictCabinetPhone] = useState('');
+  const [districtCabinetPhoto, setDistrictCabinetPhoto] = useState('');
 
   // Lion Cabinet member form
   const [lionName, setLionName] = useState('');
@@ -155,6 +167,7 @@ export default function AdminDashboard() {
         if (!active) return;
         setUser(verifiedUser);
         await loadData();
+        if (active) setIsLoadingData(false);
       } catch {
         db.logout();
         if (active) router.push('/login');
@@ -308,6 +321,34 @@ export default function AdminDashboard() {
     const wasEditing = Boolean(editingCabinet); resetCabinetForm(); loadData(); alert(wasEditing ? 'Cabinet member updated!' : 'Cabinet member added!');
   };
 
+  const resetDistrictCabinetForm = () => {
+    setEditingDistrictCabinet(null); setDistrictCabinetName(''); setDistrictCabinetRole(''); setDistrictCabinetClub('');
+    setDistrictCabinetEmail(''); setDistrictCabinetPhone(''); setDistrictCabinetPhoto('');
+  };
+  const startEditDistrictCabinet = (districtId: string, member: LeoProfile) => {
+    setDistrictCabinetDistrict(districtId); setEditingDistrictCabinet({ districtId, member });
+    setDistrictCabinetName(member.name); setDistrictCabinetRole(member.role); setDistrictCabinetClub(member.club || '');
+    setDistrictCabinetEmail(member.email || ''); setDistrictCabinetPhone(member.phone || ''); setDistrictCabinetPhoto(member.photo || '');
+  };
+  const handleSaveDistrictCabinet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!districtCabinetName || !districtCabinetRole) { alert('Name and role are required'); return; }
+    const member = {
+      name: districtCabinetName, role: districtCabinetRole, club: districtCabinetClub,
+      email: districtCabinetEmail, phone: districtCabinetPhone, photo: districtCabinetPhoto,
+    };
+    const wasEditing = Boolean(editingDistrictCabinet);
+    if (editingDistrictCabinet) {
+      await db.updateDistrictCabinetMember(editingDistrictCabinet.districtId, {
+        ...editingDistrictCabinet.member, ...member, district: editingDistrictCabinet.districtId,
+      });
+    } else {
+      await db.addDistrictCabinetMember(districtCabinetDistrict, member);
+    }
+    resetDistrictCabinetForm(); await loadData();
+    alert(wasEditing ? 'District cabinet member updated!' : 'District cabinet member added!');
+  };
+
   const resetLionForm = () => {
     setEditingLion(null); setLionName(''); setLionRole(''); setLionDistrict('317'); setLionClub(''); setLionEmail(''); setLionPhone(''); setLionPhoto('');
   };
@@ -339,7 +380,9 @@ export default function AdminDashboard() {
     alert('Club profile updated successfully!');
   };
 
-  if (!user) return null;
+  if (!user || isLoadingData) {
+    return <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><PageDataLoader variant="wide" label="Synchronizing administration console" /></div>;
+  }
 
   // Role based filtering logic for actions
   const isSuper = user.role === 'Super Admin';
@@ -348,6 +391,8 @@ export default function AdminDashboard() {
   // These filters mirror the scopes now enforced by the backend.
   const manageableClubs = clubs.filter(c => isMD || (isDistrict && c.districtId === user.district) || (user.club && c.name === user.club));
   const manageableProjects = projects.filter(p => isMD || (isDistrict && p.district === user.district) || (user.club && p.club === user.club));
+  const manageableDistrictCabinets = districts.filter(d => isMD || d.id === user.district);
+  const activeDistrictCabinet = manageableDistrictCabinets.find(d => d.id === districtCabinetDistrict);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch optimize-rendering-heavy">
@@ -433,6 +478,14 @@ export default function AdminDashboard() {
             <Award size={14} />
             MD Cabinet
           </button>
+
+          {isMD && <button
+            onClick={() => { setActiveTab('district-cabinet'); resetDistrictCabinetForm(); }}
+            className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl transition-all ${activeTab === 'district-cabinet' ? 'bg-gold-primary/10 border-l-2 border-gold-primary text-gold-light font-bold' : 'hover:bg-white/5 text-silver-primary hover:text-white'}`}
+          >
+            <Users size={14} />
+            District Cabinets
+          </button>}
 
           <button
             onClick={() => setActiveTab('lion')}
@@ -1031,7 +1084,78 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* TAB 6: MD CABINET */}
+        {/* TAB 6: DISTRICT CABINETS */}
+        {activeTab === 'district-cabinet' && isMD && (
+          <div className="space-y-8">
+            <div className="flex flex-col gap-4 border-b border-white/5 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-serif font-bold text-white uppercase tracking-wider">District Cabinet Manager</h2>
+                <p className="mt-1 text-[9px] uppercase tracking-wider text-silver-dark">Manage cabinet members for districts 317A through 317G</p>
+              </div>
+              <select
+                value={districtCabinetDistrict}
+                onChange={(e) => { setDistrictCabinetDistrict(e.target.value); resetDistrictCabinetForm(); }}
+                disabled={Boolean(editingDistrictCabinet)}
+                className="rounded-xl border border-gold-primary/30 bg-bg-deep-space px-4 py-2.5 text-xs font-bold text-gold-light focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {manageableDistrictCabinets.map((district) => <option key={district.id} value={district.id}>District {district.id}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-gold-light">
+                {activeDistrictCabinet ? `District ${activeDistrictCabinet.id} Cabinet (${activeDistrictCabinet.cabinet.length})` : 'District Cabinet'}
+              </h4>
+              <div className="max-h-[360px] space-y-3.5 overflow-y-auto pr-2">
+                {(activeDistrictCabinet?.cabinet || []).map((member) => (
+                  <div key={member.id} className="flex flex-col justify-between gap-3 rounded-xl border border-white/5 bg-white/3 p-3.5 sm:flex-row sm:items-center">
+                    <div>
+                      <h5 className="text-xs font-bold text-white">{member.name}</h5>
+                      <span className="text-[9px] text-silver-dark">{member.role}{member.club ? ` • ${member.club}` : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => startEditDistrictCabinet(districtCabinetDistrict, member)} className="rounded-full border border-white/10 p-1.5 text-gold-light hover:border-gold-primary" title="Edit district cabinet member"><Edit3 size={13} /></button>
+                      <button onClick={async () => {
+                        if (confirm(`Remove ${member.name} from District ${districtCabinetDistrict} cabinet?`)) {
+                          await db.deleteDistrictCabinetMember(districtCabinetDistrict, member.id);
+                          await loadData();
+                        }
+                      }} className="rounded-full border border-red-500/25 p-1.5 text-red-400 hover:border-red-500 hover:bg-red-500/5" title="Delete district cabinet member"><Trash2 size={13} /></button>
+                    </div>
+                  </div>
+                ))}
+                {activeDistrictCabinet && activeDistrictCabinet.cabinet.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-[10px] uppercase tracking-wider text-silver-dark">No members recorded for District {activeDistrictCabinet.id} yet.</div>
+                )}
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveDistrictCabinet} className="space-y-4 rounded-2xl border border-gold-primary/20 bg-gold-primary/[0.025] p-5 text-xs">
+              <h4 className="flex items-center gap-1.5 border-b border-white/5 pb-2 text-[9px] font-bold uppercase tracking-wider text-gold-light">
+                {editingDistrictCabinet ? <Edit3 size={12} /> : <Plus size={12} />}
+                {editingDistrictCabinet ? `Update District ${editingDistrictCabinet.districtId} Cabinet Member` : `Add Member to District ${districtCabinetDistrict} Cabinet`}
+              </h4>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Full Name</label><input value={districtCabinetName} onChange={(e) => setDistrictCabinetName(e.target.value)} required placeholder="e.g. Leo Name" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Role / Designation</label><input value={districtCabinetRole} onChange={(e) => setDistrictCabinetRole(e.target.value)} required placeholder="e.g. District Secretary" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Leo Club Name</label><input value={districtCabinetClub} onChange={(e) => setDistrictCabinetClub(e.target.value)} placeholder="e.g. Leo Club of RVCE" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Email</label><input type="email" value={districtCabinetEmail} onChange={(e) => setDistrictCabinetEmail(e.target.value)} placeholder="email@example.com" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Phone</label><input value={districtCabinetPhone} onChange={(e) => setDistrictCabinetPhone(e.target.value)} placeholder="+91 9876543210" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Photo URL</label><input value={districtCabinetPhoto} onChange={(e) => setDistrictCabinetPhoto(e.target.value)} placeholder="Google Drive or direct image URL" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+              </div>
+              <div className="flex gap-3">
+                {editingDistrictCabinet && <button type="button" onClick={resetDistrictCabinetForm} className="rounded-full border border-white/15 px-5 py-2.5 text-[9px] font-bold uppercase tracking-widest text-silver-primary">Cancel</button>}
+                <button type="submit" className="flex-1 rounded-full bg-gold-primary py-2.5 text-[9px] font-bold uppercase tracking-widest text-bg-deep-space hover:bg-gold-hover">{editingDistrictCabinet ? 'Save Member Changes' : 'Add District Member'}</button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* TAB 7: MD CABINET */}
         {activeTab === 'cabinet' && (
           <div className="space-y-8">
             <div className="flex justify-between items-center border-b border-white/5 pb-4">
