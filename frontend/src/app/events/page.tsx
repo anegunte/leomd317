@@ -17,6 +17,27 @@ import {
   CalendarCheck
 } from 'lucide-react';
 import PageDataLoader from '@/components/PageDataLoader';
+import { SITE_NAME } from '@/lib/seo';
+
+function EventStructuredData({ events }: { events: LeoEvent[] }) {
+  const structuredEvents = events
+    .filter((event) => event.title && event.date && event.location && !Number.isNaN(Date.parse(event.date)))
+    .map((event) => ({
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: event.title,
+      description: event.description,
+      startDate: new Date(event.date).toISOString(),
+      eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+      location: { '@type': 'Place', name: event.location },
+      organizer: { '@type': 'Organization', name: event.organizingTeam || SITE_NAME },
+      ...(event.poster ? { image: [toDirectImageUrl(event.poster)] } : {}),
+    }));
+
+  if (structuredEvents.length === 0) return null;
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredEvents) }} />;
+}
 
 export default function Events() {
   const [events, setEvents] = useState<LeoEvent[]>([]);
@@ -131,6 +152,7 @@ export default function Events() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full optimize-rendering-heavy">
+      <EventStructuredData events={upcomingEvents} />
 
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto mb-16">
