@@ -28,9 +28,14 @@ export const metadata: Metadata = {
   description: "Leo Multiple District 317 connects youth leadership, community-service projects, events and measurable impact across Karnataka, Goa and Andhra Pradesh.",
   applicationName: SITE_NAME,
   icons: {
-    icon: '/leo-md317-favicon.ico?v=2027',
-    shortcut: '/leo-md317-favicon.ico?v=2027',
-    apple: '/logo.jpg',
+    // Keep these URLs stable: Google uses the icon linked by the home page for
+    // the favicon shown in Search results.
+    icon: [
+      { url: '/favicon.ico', sizes: 'any', type: 'image/x-icon' },
+      { url: '/favicon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   keywords: ["Leo Multiple District 317", "Leo Clubs", "Lions International", "youth leadership", "community service", "volunteer projects", "Karnataka service activities", "Goa Leo Clubs", "Beyond Boundaries"],
   authors: [{ name: "Leo Multiple District 317 Cabinet" }],
