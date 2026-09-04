@@ -127,6 +127,9 @@ def seed():
             "cabinet": [],
         },
     ]
+    for district in districts:
+        for position, member in enumerate(district.get("cabinet", [])):
+            member["displayOrder"] = position
     db["districts"].delete_many({})
     db["districts"].insert_many(districts)
     print(f"  ✅ Inserted {len(districts)} districts")
@@ -202,6 +205,8 @@ def seed():
         {"id": "md-9", "name": "Leo Lion Sougandhi Golla", "role": "Multiple District GLT", "district": "317E", "club": "Leo Club of JL Vriddhi", "email": "sougandhig36@gmail.com", "phone": "+91 6363340244"},
         {"id": "md-10", "name": "Leo Soujanya Shashidhar Allalli", "role": "Multiple District Leo GST", "district": "317B", "club": "Leo Club of Hubballi", "email": "soujanyashashidhar04@gmail.com", "phone": "+91 6361267986"},
     ]
+    for position, member in enumerate(md_cabinet):
+        member["displayOrder"] = position
     db["md_cabinet"].delete_many({})
     db["md_cabinet"].insert_many(md_cabinet)
     print(f"  ✅ Inserted {len(md_cabinet)} MD cabinet members")
@@ -254,9 +259,9 @@ def seed():
 
     # ── Stories ──
     stories = [
-        {"id": "story-1", "tag": "Go green campaign", "title": "Kodagu Reforestation", "image": "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=600"},
-        {"id": "story-2", "tag": "Health Outreach", "title": "Udupi Welfare Drive", "image": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=80&w=600"},
-        {"id": "story-3", "tag": "Leadership summit", "title": "Cabinet Induction 2026", "image": "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&q=80&w=600"},
+        {"id": "story-1", "tag": "Education • District 317C", "title": "A Bright Future: How LEO Support Kept Me in School", "description": "When financial constraints threatened to end Rajesh's schooling, local Leos sponsored his annual tuition, providing uniforms, books, and mentoring support.", "impactOutcome": "Sponsored 120+ Students", "image": "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?auto=format&fit=crop&q=80&w=800", "readLink": ""},
+        {"id": "story-2", "tag": "Healthcare • District 317A", "title": "The Gift of Life: 3 Units of Blood When It Mattered", "description": "During an emergency surgery, Leo blood coordinators mobilized donors within 30 minutes, delivering critical units to save a mother's life.", "impactOutcome": "1,200+ Blood Units Mobilized", "image": "https://user23765.na.imgto.link/public/20260814/nguy-n-hi-p-sttean4wwru-unsplash-2.avif", "readLink": ""},
+        {"id": "story-3", "tag": "Leadership • District 317F", "title": "From Shy Volunteer to District President", "description": "Kavitha joined Leo as a quiet college freshman. Through district-level workshops and service roles, she developed public speaking and executive leadership skills.", "impactOutcome": "Trained 350+ Leaders", "image": "https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800", "readLink": ""},
     ]
     db["stories"].delete_many({})
     db["stories"].insert_many(stories)
@@ -305,6 +310,8 @@ def seed():
         {"id": "lion-5", "name": "Lion Raghavendra Nayak", "role": "District Leo Advisor 317A", "district": "317A", "club": "Lions Club of Bangalore South", "email": "raghu.nayak@lions317.org", "phone": "+91 9845098765"},
         {"id": "lion-6", "name": "Lion Meena Hegde", "role": "District Leo Advisor 317C", "district": "317C", "club": "Lions Club of Shimoga", "email": "meena.hegde@lions317.org", "phone": "+91 9886654321"},
     ]
+    for position, member in enumerate(lion_cabinet):
+        member["displayOrder"] = position
     db["lion_cabinet"].delete_many({})
     db["lion_cabinet"].insert_many(lion_cabinet)
     print(f"  ✅ Inserted {len(lion_cabinet)} Lion Cabinet members")

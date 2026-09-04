@@ -79,6 +79,21 @@ def update_ticker():
 stories_col = db["stories"]
 
 
+def _story_payload(data, story_id=None):
+    """Keep home-page stories consistent, complete, and safe to render."""
+    if not isinstance(data, dict) or not str(data.get("title", "")).strip() or not str(data.get("image", "")).strip():
+        return None
+    return {
+        "id": story_id or data.get("id"),
+        "tag": str(data.get("tag", "Service Story")).strip(),
+        "title": str(data["title"]).strip(),
+        "image": str(data["image"]).strip(),
+        "description": str(data.get("description", "")).strip(),
+        "impactOutcome": str(data.get("impactOutcome", "")).strip(),
+        "readLink": str(data.get("readLink", "")).strip(),
+    }
+
+
 @site_settings_bp.route("/stories", methods=["GET"])
 def get_stories():
     stories = list(stories_col.find({}, {"_id": 0}))
@@ -87,19 +102,24 @@ def get_stories():
 
 @site_settings_bp.route("/stories", methods=["POST"])
 def add_story():
-    data = request.get_json()
+    data = request.get_json() or {}
+    story = _story_payload(data)
+    if not story:
+        return jsonify({"error": "title and image are required"}), 400
     import time
-    data.setdefault("id", f"story-{int(time.time() * 1000)}")
-    stories_col.insert_one(data)
-    data.pop("_id", None)
-    return jsonify(data), 201
+    story["id"] = f"story-{int(time.time() * 1000)}"
+    stories_col.insert_one(story)
+    # insert_one adds MongoDB's ObjectId to this dictionary; it is not JSON serializable.
+    story.pop("_id", None)
+    return jsonify(story), 201
 
 
 @site_settings_bp.route("/stories/<story_id>", methods=["PUT"])
 def update_story(story_id):
-    data = request.get_json()
-    data.pop("_id", None)
-    result = stories_col.update_one({"id": story_id}, {"$set": data})
+    story = _story_payload(request.get_json() or {}, story_id=story_id)
+    if not story:
+        return jsonify({"error": "title and image are required"}), 400
+    result = stories_col.update_one({"id": story_id}, {"$set": story})
     if result.matched_count == 0:
         return jsonify({"error": "Story not found"}), 404
     updated = stories_col.find_one({"id": story_id}, {"_id": 0})

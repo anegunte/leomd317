@@ -8,6 +8,8 @@ export interface LeoProfile {
   phone?: string;
   linkedin?: string;
   photo?: string;
+  /** Persisted cabinet sequence; lower numbers appear first in the directory. */
+  displayOrder?: number;
 }
 
 export interface ClubData {
@@ -86,6 +88,16 @@ export interface MediaItem {
   category: 'Installations' | 'Conferences' | 'Service Projects' | 'Youth Leadership';
   title: string;
   district: string;
+}
+
+export interface HomeStory {
+  id: string;
+  tag: string;
+  title: string;
+  image: string;
+  description?: string;
+  impactOutcome?: string;
+  readLink?: string;
 }
 
 // -------------------------------------------------------------

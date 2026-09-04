@@ -206,13 +206,13 @@ export default function Impact() {
                 <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-xs">
                   <span className="text-[9px] text-silver-dark font-mono truncate max-w-[120px]">{project.club}</span>
                   <div className="flex gap-4 shrink-0 text-[10px] font-bold text-gold-light font-sans">
-                    {project.impactMetrics.beneficiaries && (
+                    {(project.impactMetrics.beneficiaries ?? 0) > 0 && (
                       <span className="flex items-center gap-1" title="Beneficiaries">
                         <Users size={12} className="text-gold-primary" />
-                        {project.impactMetrics.beneficiaries.toLocaleString()}
+                        {(project.impactMetrics.beneficiaries ?? 0).toLocaleString()}
                       </span>
                     )}
-                    {project.impactMetrics.volunteerHours && (
+                    {(project.impactMetrics.volunteerHours ?? 0) > 0 && (
                       <span className="flex items-center gap-1" title="Volunteer Hours">
                         <Clock size={12} className="text-gold-primary" />
                         {project.impactMetrics.volunteerHours}h
@@ -275,16 +275,16 @@ export default function Impact() {
               {/* Exhaustive Metrics Grid */}
               <div className="mt-8 border-y border-white/5 py-5 grid grid-cols-2 sm:grid-cols-3 gap-6 bg-white/2">
                 
-                {activeProjectModal.impactMetrics.beneficiaries && (
+                {(activeProjectModal.impactMetrics.beneficiaries ?? 0) > 0 && (
                   <div>
                     <span className="block text-[8px] tracking-widest uppercase text-silver-dark">Beneficiaries</span>
                     <span className="text-lg font-bold text-gold-light flex items-center gap-1.5 mt-1 font-sans">
                       <Users size={16} className="text-gold-primary" />
-                      {activeProjectModal.impactMetrics.beneficiaries.toLocaleString()}
+                      {(activeProjectModal.impactMetrics.beneficiaries ?? 0).toLocaleString()}
                     </span>
                   </div>
                 )}
-                {activeProjectModal.impactMetrics.volunteerHours && (
+                {(activeProjectModal.impactMetrics.volunteerHours ?? 0) > 0 && (
                   <div>
                     <span className="block text-[8px] tracking-widest uppercase text-silver-dark">Volunteer Investment</span>
                     <span className="text-lg font-bold text-white flex items-center gap-1.5 mt-1 font-sans">
@@ -293,7 +293,7 @@ export default function Impact() {
                     </span>
                   </div>
                 )}
-                {activeProjectModal.impactMetrics.treesPlanted && (
+                {(activeProjectModal.impactMetrics.treesPlanted ?? 0) > 0 && (
                   <div>
                     <span className="block text-[8px] tracking-widest uppercase text-silver-dark">Reforestation</span>
                     <span className="text-lg font-bold text-gold-light flex items-center gap-1.5 mt-1 font-sans">
@@ -302,7 +302,7 @@ export default function Impact() {
                     </span>
                   </div>
                 )}
-                {activeProjectModal.impactMetrics.bloodUnits && (
+                {(activeProjectModal.impactMetrics.bloodUnits ?? 0) > 0 && (
                   <div>
                     <span className="block text-[8px] tracking-widest uppercase text-silver-dark">Blood Units Collected</span>
                     <span className="text-lg font-bold text-white flex items-center gap-1.5 mt-1 font-sans">
@@ -311,11 +311,11 @@ export default function Impact() {
                     </span>
                   </div>
                 )}
-                {activeProjectModal.impactMetrics.fundsRaised && (
+                {(activeProjectModal.impactMetrics.fundsRaised ?? 0) > 0 && (
                   <div>
                     <span className="block text-[8px] tracking-widest uppercase text-silver-dark">Funds Mobilized</span>
                     <span className="text-lg font-bold text-gold-light flex items-center gap-1.5 mt-1 font-sans">
-                      ₹{activeProjectModal.impactMetrics.fundsRaised.toLocaleString()}
+                      ₹{(activeProjectModal.impactMetrics.fundsRaised ?? 0).toLocaleString()}
                     </span>
                   </div>
                 )}

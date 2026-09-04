@@ -23,6 +23,7 @@ import LandingCelebration from '@/components/LandingCelebration';
 import LiveLandingUpdates from '@/components/LiveLandingUpdates';
 import PageDataLoader from '@/components/PageDataLoader';
 import { db, toDirectImageUrl } from '@/lib/db';
+import type { HomeStory, MediaItem } from '@/lib/mockData';
 
 // Dynamically import heavy interactive components to disable SSR hydration warnings and optimize initial LCP
 const KarnatakaMap = dynamic(() => import('@/components/KarnatakaMap'), { ssr: false });
@@ -34,19 +35,21 @@ export default function Home() {
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [counters, setCounters] = useState<any[]>([]);
   const [ticker, setTicker] = useState<any[]>([]);
-  const [stories, setStories] = useState<any[]>([]);
+  const [stories, setStories] = useState<HomeStory[]>([]);
+  const [mediaPreview, setMediaPreview] = useState<MediaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadHome = async () => {
       try {
-        const [settings, dashboardCounters, tickerItems, storyItems] = await Promise.all([
-          db.getSiteSettings(), db.getCounters(), db.getTicker(), db.getStories(),
+        const [settings, dashboardCounters, tickerItems, storyItems, mediaItems] = await Promise.all([
+          db.getSiteSettings(), db.getCounters(), db.getTicker(), db.getStories(), db.getMedia(),
         ]);
         setSiteSettings(settings);
         setCounters(dashboardCounters);
         setTicker(tickerItems);
         setStories(storyItems);
+        setMediaPreview(mediaItems.slice(0, 3));
       } catch (error) {
         console.error('Unable to load landing page data', error);
       } finally {
@@ -211,127 +214,42 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Card 1 */}
-            <div className="group relative rounded-2xl overflow-hidden border border-white/10 bg-bg-deep-space flex flex-col justify-between shadow-[0_15px_30px_rgba(0,0,0,0.5)] hover:border-gold-primary/25 transition-all duration-500 h-[480px]">
-              {/* Image */}
-              <div className="absolute inset-0 z-0">
-                <Image
-                  src="https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?auto=format&fit=crop&q=80&w=800"
-                  alt="Education Story"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover filter brightness-[0.45] transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-bg-deep-space via-bg-deep-space/40 to-transparent" />
-              </div>
-
-              {/* Content */}
-              <div className="relative z-10 p-8 flex flex-col justify-end h-full">
-                <span className="px-2 py-0.5 rounded bg-gold-primary/10 border border-gold-primary/30 text-[8px] font-bold tracking-widest text-gold-light uppercase w-max mb-4">
-                  Education &bull; District 317C
-                </span>
-                <h3 className="text-xl font-serif font-bold text-white leading-snug group-hover:text-gold-light transition-colors mb-3">
-                  A Bright Future: How LEO Support Kept Me in School
-                </h3>
-                <p className="text-xs text-silver-primary/80 line-clamp-3 mb-6 font-light leading-relaxed">
-                  When financial constraints threatened to end Rajesh's schooling, local Leos sponsored his annual tuition, providing uniforms, books, and mentoring coordinates.
-                </p>
-                <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                  <div>
-                    <span className="block text-[8px] uppercase tracking-wider text-silver-dark">Impact Outcome</span>
-                    <span className="text-xs font-bold text-gold-light">Sponsored 120+ Students</span>
+          {isLoading ? <PageDataLoader variant="cards" label="Loading community stories" /> : stories.length > 0 ? (
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+              {stories.map((story) => (
+                <article key={story.id} className="group relative flex h-[480px] flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-bg-deep-space shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-all duration-500 hover:border-gold-primary/25">
+                  <div className="absolute inset-0 z-0">
+                    <img src={toDirectImageUrl(story.image)} alt={story.title} className="h-full w-full object-cover brightness-[0.45] transition-transform duration-700 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-bg-deep-space via-bg-deep-space/40 to-transparent" />
                   </div>
-                  <button
-                    onClick={() => alert("Launching full editorial: 'Rajesh\'s Academic Journey'...")}
-                    className="text-[9px] font-bold tracking-widest text-white uppercase group-hover:text-gold-primary transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    Read Story <ArrowRight size={10} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2 */}
-            <div className="group relative rounded-2xl overflow-hidden border border-white/10 bg-bg-deep-space flex flex-col justify-between shadow-[0_15px_30px_rgba(0,0,0,0.5)] hover:border-gold-primary/25 transition-all duration-500 h-[480px]">
-              {/* Image */}
-              <div className="absolute inset-0 z-0">
-                <Image
-                  src="https://user23765.na.imgto.link/public/20260814/nguy-n-hi-p-sttean4wwru-unsplash-2.avif"
-                  alt="Healthcare Story"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover filter brightness-[0.45] transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-bg-deep-space via-bg-deep-space/40 to-transparent" />
-              </div>
-
-              {/* Content */}
-              <div className="relative z-10 p-8 flex flex-col justify-end h-full">
-                <span className="px-2 py-0.5 rounded bg-gold-primary/10 border border-gold-primary/30 text-[8px] font-bold tracking-widest text-gold-light uppercase w-max mb-4">
-                  Healthcare &bull; District 317A
-                </span>
-                <h3 className="text-xl font-serif font-bold text-white leading-snug group-hover:text-gold-light transition-colors mb-3">
-                  The Gift of Life: 3 Units of Blood When It Mattered
-                </h3>
-                <p className="text-xs text-silver-primary/80 line-clamp-3 mb-6 font-light leading-relaxed">
-                  During an emergency surgery, LEO blood coordinators mobilized donors within 30 minutes, delivering 3 critical units of O-negative blood to save a mother's life.
-                </p>
-                <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                  <div>
-                    <span className="block text-[8px] uppercase tracking-wider text-silver-dark">Impact Outcome</span>
-                    <span className="text-xs font-bold text-gold-light">1,200+ Blood Units Mobilized</span>
+                  <div className="relative z-10 flex h-full flex-col justify-end p-8">
+                    <span className="mb-4 w-max rounded border border-gold-primary/30 bg-gold-primary/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest text-gold-light">
+                      {story.tag || 'Service Story'}
+                    </span>
+                    <h3 className="mb-3 font-serif text-xl font-bold leading-snug text-white transition-colors group-hover:text-gold-light">{story.title}</h3>
+                    <p className="mb-6 line-clamp-3 text-xs font-light leading-relaxed text-silver-primary/80">
+                      {story.description || 'Discover the people, service, and leadership behind this Leo impact story.'}
+                    </p>
+                    <div className="flex items-center justify-between border-t border-white/10 pt-4">
+                      <div>
+                        <span className="block text-[8px] uppercase tracking-wider text-silver-dark">Impact Outcome</span>
+                        <span className="text-xs font-bold text-gold-light">{story.impactOutcome || 'Community impact in action'}</span>
+                      </div>
+                      {story.readLink ? (
+                        <a href={story.readLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-white transition-colors hover:text-gold-primary">
+                          Read Story <ArrowRight size={10} />
+                        </a>
+                      ) : (
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-silver-primary">Impact Story</span>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => alert("Launching full editorial: 'Emergency Blood Network Response'...")}
-                    className="text-[9px] font-bold tracking-widest text-white uppercase group-hover:text-gold-primary transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    Read Story <ArrowRight size={10} />
-                  </button>
-                </div>
-              </div>
+                </article>
+              ))}
             </div>
-
-            {/* Card 3 */}
-            <div className="group relative rounded-2xl overflow-hidden border border-white/10 bg-bg-deep-space flex flex-col justify-between shadow-[0_15px_30px_rgba(0,0,0,0.5)] hover:border-gold-primary/25 transition-all duration-500 h-[480px]">
-              {/* Image */}
-              <div className="absolute inset-0 z-0">
-                <Image
-                  src="https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800"
-                  alt="Leadership Story"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover filter brightness-[0.45] transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-bg-deep-space via-bg-deep-space/40 to-transparent" />
-              </div>
-
-              {/* Content */}
-              <div className="relative z-10 p-8 flex flex-col justify-end h-full">
-                <span className="px-2 py-0.5 rounded bg-gold-primary/10 border border-gold-primary/30 text-[8px] font-bold tracking-widest text-gold-light uppercase w-max mb-4">
-                  Leadership &bull; District 317F
-                </span>
-                <h3 className="text-xl font-serif font-bold text-white leading-snug group-hover:text-gold-light transition-colors mb-3">
-                  From Shy Volunteer to District President
-                </h3>
-                <p className="text-xs text-silver-primary/80 line-clamp-3 mb-6 font-light leading-relaxed">
-                  Kavitha joined LEO as a quiet college freshman. Through district-level speech workshops and service execution roles, she developed absolute public speaking and executive leadership skills.
-                </p>
-                <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                  <div>
-                    <span className="block text-[8px] uppercase tracking-wider text-silver-dark">Impact Outcome</span>
-                    <span className="text-xs font-bold text-gold-light">Trained 350+ Leaders</span>
-                  </div>
-                  <button
-                    onClick={() => alert("Launching full editorial: 'Youth Leadership Transformation'...")}
-                    className="text-[9px] font-bold tracking-widest text-white uppercase group-hover:text-gold-primary transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    Read Story <ArrowRight size={10} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/10 px-6 py-16 text-center text-xs text-silver-dark">Stories will appear here once they are published from the admin panel.</div>
+          )}
         </div>
       </section>
 
@@ -511,23 +429,22 @@ export default function Home() {
             </Link>
           </div>
 
-          {isLoading ? <PageDataLoader variant="gallery" label="Synchronizing visual archive" /> : <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {stories.map((story, i) => (
-              <div key={story.id || i} className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-white/10 shadow-lg">
-                <Image
-                  src={toDirectImageUrl(story.image)}
-                  alt={story.title}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 33vw"
-                  className="object-cover filter brightness-[0.55] transition-transform duration-500 group-hover:scale-105"
+          {isLoading ? <PageDataLoader variant="gallery" label="Synchronizing visual archive" /> : mediaPreview.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {mediaPreview.map((item) => (
+              <Link key={item.id} href="/media" className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-white/10 shadow-lg">
+                <img
+                  src={toDirectImageUrl(item.thumbnail || item.url)}
+                  alt={item.title}
+                  className="h-full w-full object-cover brightness-[0.55] transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-bg-midnight/90 to-transparent flex flex-col justify-end p-6">
-                  <span className="text-[9px] tracking-wider text-gold-light uppercase font-bold">{story.tag}</span>
-                  <span className="text-xs font-bold text-white mt-1">{story.title}</span>
+                  <span className="text-[9px] tracking-wider text-gold-light uppercase font-bold">{item.category}</span>
+                  <span className="text-xs font-bold text-white mt-1">{item.title}</span>
+                  <span className="text-[9px] tracking-wider text-white/60 uppercase mt-1">District {item.district}</span>
                 </div>
-              </div>
+              </Link>
             ))}
-          </div>}
+          </div> : <div className="rounded-2xl border border-white/10 bg-white/[0.02] py-12 text-center text-sm text-silver/70">Visual archive entries will appear here shortly.</div>}
         </div>
       </section>
 

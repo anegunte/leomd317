@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/db';
-import { ServiceProject, ClubData, DistrictData, MediaItem, LeoEvent, LeoProfile } from '@/lib/mockData';
+import { ServiceProject, ClubData, DistrictData, MediaItem, LeoEvent, LeoProfile, HomeStory } from '@/lib/mockData';
 import { DEFAULT_ISAME_SETTINGS, IsameSettings } from '@/lib/isame';
 import {
   Users,
@@ -21,15 +21,27 @@ import {
   Database,
   CalendarCheck,
   Edit3,
-  Globe2
+  Globe2,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import PageDataLoader from '@/components/PageDataLoader';
 
+function moveCabinetMember(members: LeoProfile[], memberId: string, direction: 'up' | 'down'): LeoProfile[] | null {
+  const currentIndex = members.findIndex((member) => member.id === memberId);
+  const nextIndex = currentIndex + (direction === 'up' ? -1 : 1);
+  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= members.length) return null;
+
+  const reordered = [...members];
+  [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+  return reordered.map((member, displayOrder) => ({ ...member, displayOrder }));
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'stats' | 'directory' | 'projects' | 'media' | 'events' | 'site' | 'cabinet' | 'district-cabinet' | 'lion' | 'isame'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'directory' | 'projects' | 'media' | 'stories' | 'events' | 'site' | 'cabinet' | 'district-cabinet' | 'lion' | 'isame'>('stats');
 
   // Database datasets state
   const [projects, setProjects] = useState<ServiceProject[]>([]);
@@ -39,16 +51,21 @@ export default function AdminDashboard() {
   const [mdCabinet, setMdCabinet] = useState<LeoProfile[]>([]);
   const [lionCabinet, setLionCabinet] = useState<LeoProfile[]>([]);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [stories, setStories] = useState<HomeStory[]>([]);
   const [siteSettings, setSiteSettings] = useState<any>({});
   const [counters, setCounters] = useState<any[]>([]);
   const [tickerItems, setTickerItems] = useState<any[]>([]);
   const [isameSettings, setIsameSettings] = useState<IsameSettings>(DEFAULT_ISAME_SETTINGS);
   const [launchingConfetti, setLaunchingConfetti] = useState(false);
+  const [reorderingCabinet, setReorderingCabinet] = useState<string | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   // The same form is used for a new record and for an existing record.
   const [editingProject, setEditingProject] = useState<ServiceProject | null>(null);
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
+  const [editingStory, setEditingStory] = useState<HomeStory | null>(null);
+  const [isSavingStory, setIsSavingStory] = useState(false);
+  const [storySaveNotice, setStorySaveNotice] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<LeoEvent | null>(null);
   const [editingCabinet, setEditingCabinet] = useState<LeoProfile | null>(null);
   const [editingDistrictCabinet, setEditingDistrictCabinet] = useState<{ districtId: string; member: LeoProfile } | null>(null);
@@ -113,6 +130,14 @@ export default function AdminDashboard() {
   const [mediaCat, setMediaCat] = useState<'Installations' | 'Conferences' | 'Service Projects' | 'Youth Leadership'>('Service Projects');
   const [mediaDistrict, setMediaDistrict] = useState('317A');
 
+  // Form variables: Stories Beyond Boundaries
+  const [storyTitle, setStoryTitle] = useState('');
+  const [storyTag, setStoryTag] = useState('');
+  const [storyDescription, setStoryDescription] = useState('');
+  const [storyImpactOutcome, setStoryImpactOutcome] = useState('');
+  const [storyImage, setStoryImage] = useState('');
+  const [storyReadLink, setStoryReadLink] = useState('');
+
   // Form variables: Club edit
   const [editingClub, setEditingClub] = useState<ClubData | null>(null);
   const [editClubPres, setEditClubPres] = useState('');
@@ -128,7 +153,7 @@ export default function AdminDashboard() {
   const [newClubMembers, setNewClubMembers] = useState(25);
 
   const loadData = async () => {
-    const [p, c, d, e, m, lc, mi, s, cnt, tk, isame] = await Promise.all([
+    const [p, c, d, e, m, lc, mi, st, s, cnt, tk, isame] = await Promise.all([
       db.getProjects(),
       db.getClubs(),
       db.getDistricts(),
@@ -136,6 +161,7 @@ export default function AdminDashboard() {
       db.getMDCabinet(),
       db.getLionCabinet(),
       db.getMedia(),
+      db.getStories(),
       db.getSiteSettings(),
       db.getCounters(),
       db.getTicker(),
@@ -148,6 +174,7 @@ export default function AdminDashboard() {
     setMdCabinet(m);
     setLionCabinet(lc);
     setMediaItems(mi);
+    setStories(st);
     setSiteSettings(s);
     setCounters(cnt);
     setTickerItems(tk);
@@ -280,6 +307,59 @@ export default function AdminDashboard() {
     alert(wasEditing ? 'Media item updated successfully!' : 'Media item uploaded successfully to the Hub!');
   };
 
+  const resetStoryForm = () => {
+    setEditingStory(null); setStoryTitle(''); setStoryTag(''); setStoryDescription('');
+    setStoryImpactOutcome(''); setStoryImage(''); setStoryReadLink('');
+    setStorySaveNotice(null);
+  };
+
+  const startEditStory = (story: HomeStory) => {
+    setStorySaveNotice(null);
+    setEditingStory(story); setStoryTitle(story.title); setStoryTag(story.tag);
+    setStoryDescription(story.description || ''); setStoryImpactOutcome(story.impactOutcome || '');
+    setStoryImage(story.image); setStoryReadLink(story.readLink || '');
+  };
+
+  const handleSaveStory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!storyTitle.trim() || !storyImage.trim()) {
+      alert('A story title and image URL are required.');
+      return;
+    }
+    const story = {
+      title: storyTitle, tag: storyTag, description: storyDescription,
+      impactOutcome: storyImpactOutcome, image: storyImage, readLink: storyReadLink,
+    };
+    const wasEditing = Boolean(editingStory);
+    setIsSavingStory(true);
+    setStorySaveNotice(null);
+    try {
+      const savedStory = editingStory
+        ? await db.updateStory({ ...editingStory, ...story })
+        : await db.addStory(story);
+
+      // Update immediately—this must not depend on unrelated admin API calls.
+      setStories((current) => wasEditing
+        ? current.map((item) => item.id === savedStory.id ? savedStory : item)
+        : [savedStory, ...current]);
+      resetStoryForm();
+      const message = wasEditing ? 'Home-page story updated successfully.' : 'Home-page story published successfully.';
+      setStorySaveNotice(message);
+      alert(message);
+
+      // Refresh the remaining dashboard data in the background without hiding
+      // the successful save if another endpoint is temporarily unavailable.
+      void loadData().catch((error) => console.error('Unable to refresh the admin dashboard', error));
+    } catch (error) {
+      console.error('Unable to save home-page story', error);
+      const message = 'The story could not be saved. Please check the image URL and try again.';
+      setStorySaveNotice(null);
+      alert(message);
+    } finally {
+      setIsSavingStory(false);
+    }
+  };
+
   const resetEventForm = () => {
     setEditingEvent(null); setEvtTitle(''); setEvtDesc(''); setEvtDate(''); setEvtLocation('');
     setEvtDistrict('317A'); setEvtStatus('upcoming'); setEvtPoster(''); setEvtClub(''); setEvtRegLink(''); setEvtHighImpact(false); setEvtImpactMessage('');
@@ -360,6 +440,57 @@ export default function AdminDashboard() {
     const member = { name: lionName, role: lionRole, district: lionDistrict, club: lionClub, email: lionEmail, phone: lionPhone, photo: lionPhoto };
     if (editingLion) await db.updateLionCabinetMember({ ...editingLion, ...member }); else await db.addLionCabinetMember(member);
     const wasEditing = Boolean(editingLion); resetLionForm(); loadData(); alert(wasEditing ? 'Lion Cabinet member updated!' : 'Lion Cabinet member added!');
+  };
+
+  const moveMDCabinetMember = async (memberId: string, direction: 'up' | 'down') => {
+    if (reorderingCabinet) return;
+    const reordered = moveCabinetMember(mdCabinet, memberId, direction);
+    if (!reordered) return;
+    setMdCabinet(reordered);
+    setReorderingCabinet('md');
+    try {
+      await db.reorderMDCabinet(reordered.map((member) => member.id));
+    } catch {
+      await loadData();
+      alert('The cabinet order could not be saved. The previous order has been restored.');
+    } finally {
+      setReorderingCabinet(null);
+    }
+  };
+
+  const moveLionCabinetMember = async (memberId: string, direction: 'up' | 'down') => {
+    if (reorderingCabinet) return;
+    const reordered = moveCabinetMember(lionCabinet, memberId, direction);
+    if (!reordered) return;
+    setLionCabinet(reordered);
+    setReorderingCabinet('lion');
+    try {
+      await db.reorderLionCabinet(reordered.map((member) => member.id));
+    } catch {
+      await loadData();
+      alert('The cabinet order could not be saved. The previous order has been restored.');
+    } finally {
+      setReorderingCabinet(null);
+    }
+  };
+
+  const moveDistrictCabinetMember = async (districtId: string, memberId: string, direction: 'up' | 'down') => {
+    if (reorderingCabinet) return;
+    const district = districts.find((item) => item.id === districtId);
+    if (!district) return;
+    const reordered = moveCabinetMember(district.cabinet, memberId, direction);
+    if (!reordered) return;
+
+    setDistricts((current) => current.map((item) => item.id === districtId ? { ...item, cabinet: reordered } : item));
+    setReorderingCabinet(districtId);
+    try {
+      await db.reorderDistrictCabinet(districtId, reordered.map((member) => member.id));
+    } catch {
+      await loadData();
+      alert('The cabinet order could not be saved. The previous order has been restored.');
+    } finally {
+      setReorderingCabinet(null);
+    }
   };
 
   // Club update logic
@@ -459,6 +590,15 @@ export default function AdminDashboard() {
           >
             <Image size={14} />
             Media & Installations
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('stories'); resetStoryForm(); }}
+            className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl transition-all ${activeTab === 'stories' ? 'bg-gold-primary/10 border-l-2 border-gold-primary text-gold-light font-bold' : 'hover:bg-white/5 text-silver-primary hover:text-white'
+              }`}
+          >
+            <Sparkles size={14} />
+            Home Page Stories
           </button>
 
           <button
@@ -865,6 +1005,7 @@ export default function AdminDashboard() {
                     value={projDistrict} onChange={e => setProjDistrict(e.target.value)}
                     className="w-full px-2.5 py-2 bg-bg-deep-space border border-white/10 rounded-lg text-xs cursor-pointer"
                   >
+                    <option value="317">Multiple District 317</option>
                     <option value="317A">317A</option>
                     <option value="317B">317B</option>
                     <option value="317C">317C</option>
@@ -987,7 +1128,68 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* TAB 5: EVENTS MANAGER */}
+        {/* TAB 5: STORIES BEYOND BOUNDARIES */}
+        {activeTab === 'stories' && (
+          <div className="space-y-8">
+            <div className="flex flex-col gap-2 border-b border-white/5 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-serif font-bold uppercase tracking-wider text-white">Stories Beyond Boundaries</h2>
+                <p className="mt-1 text-[9px] uppercase tracking-wider text-silver-dark">Manage the feature stories displayed on the home page</p>
+              </div>
+              <span className="text-[9px] font-mono uppercase text-silver-dark">{stories.length} published</span>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-gold-light">Published Stories</h4>
+              <div className="max-h-[360px] space-y-3.5 overflow-y-auto pr-2">
+                {stories.map((story) => (
+                  <div key={story.id} className="flex flex-col gap-3 rounded-xl border border-white/5 bg-white/3 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <img src={story.image} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-white/10 object-cover" />
+                      <div className="min-w-0">
+                        <h5 className="truncate text-xs font-bold text-white">{story.title}</h5>
+                        <span className="block truncate text-[9px] text-silver-dark">{story.tag || 'Service Story'}{story.impactOutcome ? ` • ${story.impactOutcome}` : ''}</span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button onClick={() => startEditStory(story)} className="rounded-full border border-white/10 p-1.5 text-gold-light hover:border-gold-primary" title="Edit story" aria-label={`Edit ${story.title}`}><Edit3 size={13} /></button>
+                      <button onClick={async () => { if (confirm(`Delete \"${story.title}\" from the home page?`)) { await db.deleteStory(story.id); if (editingStory?.id === story.id) resetStoryForm(); await loadData(); } }} className="rounded-full border border-red-500/25 p-1.5 text-red-400 hover:border-red-500 hover:bg-red-500/5" title="Delete story" aria-label={`Delete ${story.title}`}><Trash2 size={13} /></button>
+                    </div>
+                  </div>
+                ))}
+                {stories.length === 0 && <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-[10px] uppercase tracking-wider text-silver-dark">No home-page stories published yet.</div>}
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveStory} className="space-y-4 rounded-2xl border border-gold-primary/20 bg-gold-primary/[0.025] p-5 text-xs">
+              <h4 className="flex items-center gap-1.5 border-b border-white/5 pb-2 text-[9px] font-bold uppercase tracking-wider text-gold-light">
+                {editingStory ? <Edit3 size={12} /> : <Plus size={12} />}
+                {editingStory ? 'Update Home-Page Story' : 'Publish New Home-Page Story'}
+              </h4>
+              {storySaveNotice && (
+                <div role="status" className="rounded-xl border border-green-400/25 bg-green-400/10 px-3 py-2 text-[10px] font-semibold text-green-300">
+                  {storySaveNotice} It is now visible in the Published Stories list above.
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Story Title</label><input value={storyTitle} onChange={(e) => setStoryTitle(e.target.value)} required placeholder="e.g. A Bright Future Through Education" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Story Label</label><input value={storyTag} onChange={(e) => setStoryTag(e.target.value)} placeholder="e.g. Education • District 317C" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+              </div>
+              <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Story Description</label><textarea value={storyDescription} onChange={(e) => setStoryDescription(e.target.value)} rows={3} placeholder="Explain the real people, action, and transformation behind this story..." className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Impact Outcome</label><input value={storyImpactOutcome} onChange={(e) => setStoryImpactOutcome(e.target.value)} placeholder="e.g. Sponsored 120+ Students" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+                <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Read Story Link (Optional)</label><input type="url" value={storyReadLink} onChange={(e) => setStoryReadLink(e.target.value)} placeholder="https://..." className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+              </div>
+              <div><label className="mb-1 block text-[8px] uppercase tracking-wider text-silver-dark">Feature Image URL</label><input value={storyImage} onChange={(e) => setStoryImage(e.target.value)} required placeholder="Google Drive or direct image URL" className="w-full rounded-lg border border-white/10 bg-bg-deep-space px-2.5 py-2 text-xs focus:border-gold-primary focus:outline-none" /></div>
+              <div className="flex gap-3">
+                {editingStory && <button type="button" onClick={resetStoryForm} className="rounded-full border border-white/15 px-5 py-2.5 text-[9px] font-bold uppercase tracking-widest text-silver-primary">Cancel</button>}
+                <button type="submit" disabled={isSavingStory} className="flex-1 rounded-full bg-gold-primary py-2.5 text-[9px] font-bold uppercase tracking-widest text-bg-deep-space hover:bg-gold-hover disabled:cursor-wait disabled:opacity-60">{isSavingStory ? 'Saving Story…' : editingStory ? 'Save Story Changes' : 'Publish Story to Home Page'}</button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* TAB 6: EVENTS MANAGER */}
         {activeTab === 'events' && (
           <div className="space-y-8">
             <div className="flex justify-between items-center border-b border-white/5 pb-4">
@@ -1103,17 +1305,27 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-gold-light">
-                {activeDistrictCabinet ? `District ${activeDistrictCabinet.id} Cabinet (${activeDistrictCabinet.cabinet.length})` : 'District Cabinet'}
-              </h4>
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gold-light">
+                  {activeDistrictCabinet ? `District ${activeDistrictCabinet.id} Cabinet (${activeDistrictCabinet.cabinet.length})` : 'District Cabinet'}
+                </h4>
+                <p className="text-[9px] text-silver-dark">Use the arrows to set the public directory order.</p>
+              </div>
               <div className="max-h-[360px] space-y-3.5 overflow-y-auto pr-2">
-                {(activeDistrictCabinet?.cabinet || []).map((member) => (
+                {(activeDistrictCabinet?.cabinet || []).map((member, index, members) => (
                   <div key={member.id} className="flex flex-col justify-between gap-3 rounded-xl border border-white/5 bg-white/3 p-3.5 sm:flex-row sm:items-center">
-                    <div>
-                      <h5 className="text-xs font-bold text-white">{member.name}</h5>
-                      <span className="text-[9px] text-silver-dark">{member.role}{member.club ? ` • ${member.club}` : ''}</span>
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex min-w-6 justify-center rounded border border-gold-primary/20 bg-gold-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-gold-light" title="Directory position">{index + 1}</span>
+                      <div>
+                        <h5 className="text-xs font-bold text-white">{member.name}</h5>
+                        <span className="text-[9px] text-silver-dark">{member.role}{member.club ? ` • ${member.club}` : ''}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <div className="flex rounded-full border border-white/10 p-0.5">
+                        <button onClick={() => moveDistrictCabinetMember(districtCabinetDistrict, member.id, 'up')} disabled={Boolean(reorderingCabinet) || index === 0} className="rounded-full p-1.5 text-silver-primary transition-colors hover:text-gold-light disabled:cursor-not-allowed disabled:opacity-30" title="Move member up" aria-label={`Move ${member.name} up`}><ArrowUp size={13} /></button>
+                        <button onClick={() => moveDistrictCabinetMember(districtCabinetDistrict, member.id, 'down')} disabled={Boolean(reorderingCabinet) || index === members.length - 1} className="rounded-full p-1.5 text-silver-primary transition-colors hover:text-gold-light disabled:cursor-not-allowed disabled:opacity-30" title="Move member down" aria-label={`Move ${member.name} down`}><ArrowDown size={13} /></button>
+                      </div>
                       <button onClick={() => startEditDistrictCabinet(districtCabinetDistrict, member)} className="rounded-full border border-white/10 p-1.5 text-gold-light hover:border-gold-primary" title="Edit district cabinet member"><Edit3 size={13} /></button>
                       <button onClick={async () => {
                         if (confirm(`Remove ${member.name} from District ${districtCabinetDistrict} cabinet?`)) {
@@ -1164,15 +1376,25 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <h4 className="text-[10px] tracking-widest uppercase font-bold text-gold-light mb-4">Current Cabinet Members</h4>
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <h4 className="text-[10px] tracking-widest uppercase font-bold text-gold-light">Current Cabinet Members</h4>
+                <p className="text-[9px] text-silver-dark">Use the arrows to set the public directory order.</p>
+              </div>
               <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-2">
-                {mdCabinet.map((m) => (
+                {mdCabinet.map((m, index) => (
                   <div key={m.id} className="p-3.5 bg-white/3 border border-white/5 rounded-xl flex justify-between items-center">
-                    <div>
-                      <h5 className="text-xs font-bold text-white">{m.name}</h5>
-                      <span className="text-[9px] text-silver-dark">{m.role} &bull; {m.district} &bull; {m.club}</span>
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex min-w-6 justify-center rounded border border-gold-primary/20 bg-gold-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-gold-light" title="Directory position">{index + 1}</span>
+                      <div>
+                        <h5 className="text-xs font-bold text-white">{m.name}</h5>
+                        <span className="text-[9px] text-silver-dark">{m.role} &bull; {m.district} &bull; {m.club}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <div className="flex rounded-full border border-white/10 p-0.5">
+                        <button onClick={() => moveMDCabinetMember(m.id, 'up')} disabled={Boolean(reorderingCabinet) || index === 0} className="rounded-full p-1.5 text-silver-primary transition-colors hover:text-gold-light disabled:cursor-not-allowed disabled:opacity-30" title="Move member up" aria-label={`Move ${m.name} up`}><ArrowUp size={13} /></button>
+                        <button onClick={() => moveMDCabinetMember(m.id, 'down')} disabled={Boolean(reorderingCabinet) || index === mdCabinet.length - 1} className="rounded-full p-1.5 text-silver-primary transition-colors hover:text-gold-light disabled:cursor-not-allowed disabled:opacity-30" title="Move member down" aria-label={`Move ${m.name} down`}><ArrowDown size={13} /></button>
+                      </div>
                       <button onClick={() => startEditCabinet(m)} className="p-1.5 rounded-full border border-white/10 hover:border-gold-primary text-gold-light" title="Edit member"><Edit3 size={13} /></button>
                       <button onClick={async () => { if (confirm(`Remove ${m.name}?`)) { await db.deleteCabinetMember(m.id); loadData(); } }} className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"><Trash2 size={13} /></button>
                     </div>
@@ -1238,15 +1460,25 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <h4 className="text-[10px] tracking-widest uppercase font-bold text-gold-light mb-4">Current Lion Cabinet Members</h4>
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <h4 className="text-[10px] tracking-widest uppercase font-bold text-gold-light">Current Lion Cabinet Members</h4>
+                <p className="text-[9px] text-silver-dark">Use the arrows to set the public directory order.</p>
+              </div>
               <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-2">
-                {lionCabinet.map((m) => (
+                {lionCabinet.map((m, index) => (
                   <div key={m.id} className="p-3.5 bg-white/3 border border-white/5 rounded-xl flex justify-between items-center">
-                    <div>
-                      <h5 className="text-xs font-bold text-white">{m.name}</h5>
-                      <span className="text-[9px] text-silver-dark">{m.role} &bull; {m.district} &bull; {m.club}</span>
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex min-w-6 justify-center rounded border border-gold-primary/20 bg-gold-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-gold-light" title="Directory position">{index + 1}</span>
+                      <div>
+                        <h5 className="text-xs font-bold text-white">{m.name}</h5>
+                        <span className="text-[9px] text-silver-dark">{m.role} &bull; {m.district} &bull; {m.club}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <div className="flex rounded-full border border-white/10 p-0.5">
+                        <button onClick={() => moveLionCabinetMember(m.id, 'up')} disabled={Boolean(reorderingCabinet) || index === 0} className="rounded-full p-1.5 text-silver-primary transition-colors hover:text-gold-light disabled:cursor-not-allowed disabled:opacity-30" title="Move member up" aria-label={`Move ${m.name} up`}><ArrowUp size={13} /></button>
+                        <button onClick={() => moveLionCabinetMember(m.id, 'down')} disabled={Boolean(reorderingCabinet) || index === lionCabinet.length - 1} className="rounded-full p-1.5 text-silver-primary transition-colors hover:text-gold-light disabled:cursor-not-allowed disabled:opacity-30" title="Move member down" aria-label={`Move ${m.name} down`}><ArrowDown size={13} /></button>
+                      </div>
                       <button onClick={() => startEditLion(m)} className="p-1.5 rounded-full border border-white/10 hover:border-gold-primary text-gold-light" title="Edit member"><Edit3 size={13} /></button>
                       <button onClick={async () => { if (confirm(`Remove ${m.name}?`)) { await db.deleteLionCabinetMember(m.id); loadData(); } }} className="p-1.5 rounded-full border border-red-500/25 hover:border-red-500 hover:bg-red-500/5 text-red-400"><Trash2 size={13} /></button>
                     </div>

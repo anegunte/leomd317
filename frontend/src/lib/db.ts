@@ -6,6 +6,7 @@ import {
   LeoEvent,
   MediaItem,
   LeoProfile,
+  HomeStory,
 } from './mockData';
 import type { IsameSettings } from './isame';
 
@@ -104,6 +105,10 @@ export const db = {
     return true;
   },
 
+  async reorderDistrictCabinet(districtId: string, memberIds: string[]): Promise<void> {
+    await apiFetch(`/districts/${districtId}/cabinet/reorder`, { method: 'PUT', body: JSON.stringify({ memberIds }) });
+  },
+
   // ── Clubs ──
   async getClubs(): Promise<ClubData[]> {
     return apiFetch('/clubs');
@@ -194,6 +199,10 @@ export const db = {
     return true;
   },
 
+  async reorderMDCabinet(memberIds: string[]): Promise<void> {
+    await apiFetch('/cabinet/reorder', { method: 'PUT', body: JSON.stringify({ memberIds }) });
+  },
+
   // ── Lion Cabinet ──
   async getLionCabinet(): Promise<LeoProfile[]> {
     return apiFetch('/lion-cabinet');
@@ -210,6 +219,10 @@ export const db = {
   async deleteLionCabinetMember(id: string): Promise<boolean> {
     await apiFetch(`/lion-cabinet/${id}`, { method: 'DELETE' });
     return true;
+  },
+
+  async reorderLionCabinet(memberIds: string[]): Promise<void> {
+    await apiFetch('/lion-cabinet/reorder', { method: 'PUT', body: JSON.stringify({ memberIds }) });
   },
 
   // ── Site Settings ──
@@ -240,15 +253,15 @@ export const db = {
   },
 
   // ── Stories ──
-  async getStories(): Promise<any[]> {
+  async getStories(): Promise<HomeStory[]> {
     return apiFetch('/site-settings/stories');
   },
 
-  async addStory(story: any): Promise<any> {
+  async addStory(story: Omit<HomeStory, 'id'>): Promise<HomeStory> {
     return apiFetch('/site-settings/stories', { method: 'POST', body: JSON.stringify(story) });
   },
 
-  async updateStory(story: any): Promise<any> {
+  async updateStory(story: HomeStory): Promise<HomeStory> {
     return apiFetch(`/site-settings/stories/${story.id}`, { method: 'PUT', body: JSON.stringify(story) });
   },
 

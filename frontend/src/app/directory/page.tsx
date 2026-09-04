@@ -14,6 +14,21 @@ const LinkedinIcon = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
+// The API already returns this sequence, but keeping the client-side ordering
+// makes the directory resilient if cached data is served during a refresh.
+const orderCabinetMembers = (members: LeoProfile[]) => members
+  .map((member, originalIndex) => ({ member, originalIndex }))
+  .sort((a, b) => (a.member.displayOrder ?? a.originalIndex) - (b.member.displayOrder ?? b.originalIndex))
+  .map(({ member }) => member);
+
+const DISTRICT_DISPLAY_ORDER = ['317A', '317B', '317C', '317D', '317E', '317F', '317G'];
+const orderDistricts = (districts: DistrictData[]) => [...districts].sort((a, b) => {
+  const aOrder = DISTRICT_DISPLAY_ORDER.indexOf(a.id);
+  const bOrder = DISTRICT_DISPLAY_ORDER.indexOf(b.id);
+  return (aOrder < 0 ? Number.MAX_SAFE_INTEGER : aOrder) - (bOrder < 0 ? Number.MAX_SAFE_INTEGER : bOrder)
+    || a.id.localeCompare(b.id);
+});
+
 export default function Directory() {
   const [districts, setDistricts] = useState<DistrictData[]>([]);
   const [clubs, setClubs] = useState<ClubData[]>([]);
@@ -38,10 +53,10 @@ export default function Directory() {
         ]);
 
         if (!isCurrent) return;
-        setDistricts(d);
+        setDistricts(orderDistricts(d.map((district) => ({ ...district, cabinet: orderCabinetMembers(district.cabinet || []) }))));
         setClubs(c);
-        setMdCabinet(m);
-        setLionCabinet(l);
+        setMdCabinet(orderCabinetMembers(m));
+        setLionCabinet(orderCabinetMembers(l));
       } catch (error) {
         console.error('Unable to load directory data', error);
       } finally {
